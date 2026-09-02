@@ -1,8 +1,4 @@
 import type { CityId } from "@/lib/types";
-import countries from "i18n-iso-countries";
-import zh from "i18n-iso-countries/langs/zh.json";
-
-countries.registerLocale(zh);
 
 export type SelectedPlace = {
   cityId: CityId;
@@ -50,10 +46,10 @@ const ZH_STATE: Record<string, string> = {
   "MY-04": "马六甲",
   "MY-05": "森美兰",
   "MY-06": "彭亨",
-  "MY-07": "槟城",
+  "MY-07": "榎城",
   "MY-08": "霹雳",
   "MY-09": "玻璃市",
-  "MY-10": "雪兰莪",
+  "MY-10": "雪兰蕾",
   "MY-11": "登嘉楼",
   "MY-12": "沙巴",
   "MY-13": "砂拉越",
@@ -74,7 +70,7 @@ const ZH_STATE: Record<string, string> = {
 
 const ZH_CITY: Record<string, string> = {
   "George Town": "乔治城",
-  Penang: "槟城",
+  Penang: "榎城",
   "Kuala Lumpur": "吉隆坡",
   "Johor Bahru": "新山",
   Singapore: "新加坡",
@@ -89,7 +85,7 @@ const ZH_CITY: Record<string, string> = {
   "Ho Chi Minh City": "胡志明市",
   Hanoi: "河内",
   Jakarta: "雅加达",
-  Bali: "巴厘岛",
+  Bali: "巴厖岛",
   Taipei: "台北",
   "Hong Kong": "香港",
   Beijing: "北京",
@@ -101,8 +97,65 @@ const ZH_CITY: Record<string, string> = {
   Seoul: "首尔",
 };
 
+const ZH_COUNTRY: Record<string, string> = {
+  MY: "马来西亚",
+  SG: "新加坡",
+  TH: "泰国",
+  CN: "中国",
+  ID: "印度尼西亚",
+  VN: "越南",
+  JP: "日本",
+  KR: "韩国",
+  TW: "台湾",
+  HK: "香港",
+  MO: "澳门",
+  PH: "菲律宾",
+  KH: "柬埔寨",
+  LA: "老挝",
+  MM: "缅甸",
+  BN: "文莱",
+  IN: "印度",
+  AU: "澳大利亚",
+  NZ: "新西兰",
+  US: "美国",
+  GB: "英国",
+  CA: "加拿大",
+  FR: "法国",
+  DE: "德国",
+  IT: "意大利",
+  ES: "西班牙",
+  NL: "荷兰",
+  CH: "瑞士",
+  SE: "瑞典",
+  NO: "挪威",
+  DK: "丹麦",
+  FI: "芬兰",
+  IE: "爱尔兰",
+  PT: "葡萄牙",
+  PL: "波兰",
+  RU: "俄罗斯",
+  UA: "乌克兰",
+  TR: "土耳其",
+  AE: "阿联酋",
+  SA: "沙特阿拉伯",
+  QA: "卡塔尔",
+  BR: "巴西",
+  MX: "墨西哥",
+  AR: "阿根廷",
+  ZA: "南非",
+  EG: "埃及",
+  NG: "尼日利亚",
+  PK: "巴基斯坦",
+  BD: "孟加拉",
+  LK: "斯里兰卡",
+  NP: "尼泊尔",
+  MN: "蒙古",
+  KZ: "哈萨克斯坦",
+};
+
 export function countryNameZh(code: string, fallback = ""): string {
-  return countries.getName(code, "zh") || fallback || code;
+  const key = code.trim().toUpperCase();
+  return ZH_COUNTRY[key] || fallback || code;
 }
 
 export function stateNameZh(countryCode: string, isoCode: string, fallback: string) {
@@ -118,7 +171,7 @@ export function placeChip(place: SelectedPlace) {
 }
 
 const CITY_ALIASES: { id: Exclude<CityId, "all">; tests: RegExp[] }[] = [
-  { id: "penang", tests: [/penang/i, /pulau pinang/i, /george town/i, /georgetown/i, /槟城/, /乔治城/] },
+  { id: "penang", tests: [/penang/i, /pulau pinang/i, /george town/i, /georgetown/i, /榎城/, /乔治城/] },
   { id: "kl", tests: [/kuala lumpur/i, /吉隆坡/, /\bkl\b/i] },
   { id: "jb", tests: [/johor bahru/i, /johor/i, /新山/, /柔佛/] },
   { id: "singapore", tests: [/singapore/i, /新加坡/] },
