@@ -30,9 +30,8 @@
 
 | Issue 主题 | 为什么 |
 | --- | --- |
-| 接上持久 Postgres | 现在没配 `DATABASE_URL` 就在内存里，重启丢报名 |
-| 图片改对象存储 | Data URL 进 Postgres 会把库撑爆 |
-| 生产环境变量与域名 | 没有公网 HTTPS，OAuth cookie 不稳定 |
+| 发布到带 Neon 的线上（免费） | 代码已开 `deploy.database`。点 Grok「发布」或 Vercel+Neon。预览库不算。见 [DEPLOY.md](DEPLOY.md) |
+| 图片改对象存储 | Data URL 进 Postgres 会把免费 0.5GB 很快用完 |
 | 报名号并发 | `count(*)+1` 会撞号 |
 
 ### P1 产品完整
