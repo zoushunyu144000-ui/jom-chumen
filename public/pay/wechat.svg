@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
+  <rect width="200" height="240" fill="#07c160"/>
+  <rect x="16" y="16" width="168" height="168" fill="#fff"/>
+  <rect x="28" y="28" width="28" height="28" fill="#111"/>
+  <rect x="144" y="28" width="28" height="28" fill="#111"/>
+  <rect x="28" y="144" width="28" height="28" fill="#111"/>
+  <rect x="36" y="36" width="12" height="12" fill="#fff"/>
+  <rect x="152" y="36" width="12" height="12" fill="#fff"/>
+  <rect x="36" y="152" width="12" height="12" fill="#fff"/>
+  <g fill="#111">
+    <rect x="72" y="40" width="8" height="8"/>
+    <rect x="88" y="48" width="8" height="8"/>
+    <rect x="104" y="40" width="8" height="8"/>
+    <rect x="80" y="72" width="8" height="8"/>
+    <rect x="120" y="80" width="8" height="8"/>
+    <rect x="96" y="96" width="16" height="16"/>
+    <rect x="64" y="112" width="8" height="8"/>
+    <rect x="128" y="120" width="8" height="8"/>
+    <rect x="80" y="136" width="8" height="8"/>
+    <rect x="112" y="144" width="8" height="8"/>
+  </g>
+  <text x="100" y="214" text-anchor="middle" fill="#fff" font-size="16" font-family="sans-serif">微信支付</text>
+</svg>
