@@ -24,6 +24,8 @@ type EventRow = {
   city: string;
   venue: string;
   address: string;
+  lat?: number | string | null;
+  lng?: number | string | null;
   starts_at: string | Date;
   ends_at: string | Date;
   currency: string;
@@ -50,6 +52,12 @@ type EventRow = {
 
 function toIso(value: string | Date) {
   return new Date(value).toISOString();
+}
+
+function toCoord(value: number | string | null | undefined): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function parseBody(raw: string | null | undefined): BodyBlock[] {
@@ -93,6 +101,8 @@ function mapEvent(row: EventRow): EventRecord {
     city: row.city as EventRecord["city"],
     venue: row.venue,
     address: row.address,
+    lat: toCoord(row.lat),
+    lng: toCoord(row.lng),
     startsAt: toIso(row.starts_at),
     endsAt: toIso(row.ends_at),
     currency: row.currency as Currency,
@@ -229,16 +239,15 @@ export const getEventBySlug = createServerFn({ method: "GET" })
 const createSchema = z.object({
   slug: z.string().min(1),
   nickname: z.string().trim().min(1).max(24),
-  phone: z
-    .string()
-    .trim()
-    .min(8)
-    .max(20)
-    .regex(/^[0-9+\-\s]+$/, "请填写有效手机号"),
   seats: z.number().int().min(1).max(4),
   paymentMethod: z.enum(["wechat", "alipay", "tng", "cash", "free"]),
   contactWechat: z.string().trim().max(40).default(""),
-  contactWhatsapp: z.string().trim().max(20).default(""),
+  contactWhatsapp: z
+    .string()
+    .trim()
+    .min(8)
+    .max(24)
+    .regex(/^[0-9+\-\s]+$/, "请填写有效 WhatsApp 号码"),
 });
 
 export const createRegistration = createServerFn({ method: "POST" })
@@ -253,11 +262,11 @@ export const createRegistration = createServerFn({ method: "POST" })
     const event = rows[0] ? mapEvent(rows[0]) : null;
     if (!event) throw new Error("活动不存在");
     if (!event.open) throw new Error("这场局已停止报名");
-    if (!data.contactWechat && !data.contactWhatsapp) {
-      throw new Error("微信号或 WhatsApp 至少填一个");
-    }
 
-    const phone = data.phone.replace(/\D/g, "");
+    const phone = data.contactWhatsapp.replace(/\D/g, "");
+    if (phone.length < 8 || phone.length > 20) {
+      throw new Error("请填写有效 WhatsApp 号码，含国家区号");
+    }
     const dup = await sql<{ id: string }>`
       select id from registrations
       where event_id = ${event.id}
@@ -265,7 +274,7 @@ export const createRegistration = createServerFn({ method: "POST" })
         and payment_status in ('pending', 'approved', 'paid')
       limit 1
     `;
-    if (dup[0]) throw new Error("这个手机号已经交过申请，请等审核");
+    if (dup[0]) throw new Error("这个 WhatsApp 已经交过申请，请等审核");
 
     const amount = event.price * data.seats;
     const method = amount <= 0 ? "free" : data.paymentMethod;
@@ -296,9 +305,9 @@ export const createRegistration = createServerFn({ method: "POST" })
         id, event_id, code, apply_no, nickname, phone, seats, payment_method,
         payment_status, amount, currency, user_id, contact_wechat, contact_whatsapp
       ) values (
-        ${id}, ${event.id}, ${code}, ${applyNo}, ${data.nickname}, ${data.phone},
+        ${id}, ${event.id}, ${code}, ${applyNo}, ${data.nickname}, ${phone},
         ${data.seats}, ${method}, ${"pending"}, ${amount}, ${event.currency},
-        ${userId}, ${data.contactWechat}, ${data.contactWhatsapp}
+        ${userId}, ${data.contactWechat}, ${phone}
       )
     `;
 

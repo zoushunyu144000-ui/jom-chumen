@@ -41,10 +41,10 @@ function LookupPage() {
         我的
       </Link>
       <h1 className="font-display text-2xl font-bold tracking-tight">查询报名</h1>
-      <p className="mt-1 text-sm text-muted">输入报名号或手机号</p>
+      <p className="mt-1 text-sm text-muted">输入报名号或 WhatsApp</p>
       <form onSubmit={(e) => void search(e)} className="mt-4 space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="q">报名号 / 手机</Label>
+          <Label htmlFor="q">报名号 / WhatsApp</Label>
           <Input id="q" value={q} onChange={(e) => setQ(e.target.value)} required />
         </div>
         <Button type="submit" className="w-full" disabled={busy}>

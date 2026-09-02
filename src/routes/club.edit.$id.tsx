@@ -42,7 +42,7 @@ function EditClubPage() {
         setReady(true);
       })
       .catch(() => toast.error("加载失败"));
-  }, [user, id]);
+  }, [user?.id, id]);
 
   if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
   if (!user) return <RedirectToSignIn />;

@@ -145,7 +145,7 @@ function ApplyResult() {
         </Button>
       ) : (
         <p className="mt-5 text-center text-xs text-muted">
-          用报名号或手机号可随时查询状态
+          用报名号或 WhatsApp 可随时查询状态
         </p>
       )}
 

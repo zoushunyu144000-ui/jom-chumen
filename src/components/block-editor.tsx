@@ -1,4 +1,5 @@
 import { ImagePlus, Quote, Trash2, Type } from "lucide-react";
+import { toast } from "sonner";
 import { compressImage } from "@/lib/image";
 import type { BodyBlock } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -14,17 +15,14 @@ export function BlockEditor({
     onChange(value.map((item, idx) => (idx === i ? block : item)));
   }
 
-  async function addImage() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
+  async function onImageFile(file: File | undefined) {
+    if (!file) return;
+    try {
       const src = await compressImage(file);
       onChange([...value, { type: "img", src, caption: "" }]);
-    };
-    input.click();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "图片处理失败，请先截图再上传");
+    }
   }
 
   return (
@@ -120,14 +118,20 @@ export function BlockEditor({
           onClick={() => onChange([...value, { type: "quote", text: "" }])}
         />
       </div>
-      <button
-        type="button"
-        onClick={() => void addImage()}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface text-sm font-medium"
-      >
+      <label className="relative flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-line bg-surface text-sm font-medium">
+        <input
+          type="file"
+          accept="image/*"
+          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            void onImageFile(file);
+          }}
+        />
         <ImagePlus className="size-4" />
         插入图片
-      </button>
+      </label>
     </div>
   );
 }

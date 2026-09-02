@@ -48,6 +48,8 @@ export type EventRecord = {
   city: Exclude<CityId, "all">;
   venue: string;
   address: string;
+  lat: number | null;
+  lng: number | null;
   startsAt: string;
   endsAt: string;
   currency: Currency;

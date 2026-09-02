@@ -34,17 +34,15 @@ function ProfilePage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     getProfile()
       .then((p) => {
-        setName(p.displayName || user.displayName || "");
+        setName(p.displayName || "");
         setAvatar(p.avatarUrl);
         setTags(p.tags);
       })
-      .catch(() => {
-        setName(user.displayName || "");
-      });
-  }, [user]);
+      .catch(() => undefined);
+  }, [user?.id]);
 
   if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
   if (!user) return <RedirectToSignIn />;

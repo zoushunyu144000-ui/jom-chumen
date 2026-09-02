@@ -3,6 +3,7 @@ import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventBody } from "@/components/event-body";
+import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
 import { formatLevel, formatPrice, formatRange } from "@/lib/format";
 import { getEventBySlug } from "@/lib/server/events";
@@ -32,6 +33,7 @@ function EventDetail() {
     if (block.type === "ul") return block.items.some((item) => item.trim());
     return Boolean(block.text?.trim());
   });
+  const hasMap = event.lat != null && event.lng != null;
 
   return (
     <main className="pb-28">
@@ -71,9 +73,9 @@ function EventDetail() {
             <MapPin className="mt-0.5 size-4 shrink-0 text-muted" />
             <span>
               {event.venue}
-              <span className="mt-0.5 block text-xs text-muted">
-                {event.address}
-              </span>
+              {event.address && event.address !== event.venue ? (
+                <span className="mt-0.5 block text-xs text-muted">{event.address}</span>
+              ) : null}
             </span>
           </li>
           <li className="flex gap-3">
@@ -83,6 +85,15 @@ function EventDetail() {
             </span>
           </li>
         </ul>
+
+        {hasMap ? (
+          <EventMap
+            lat={event.lat as number}
+            lng={event.lng as number}
+            label={event.venue}
+            className="mt-4"
+          />
+        ) : null}
 
         {event.clubId && event.clubName ? (
           <Link

@@ -14,7 +14,7 @@ import { formatPrice } from "@/lib/format";
 import { createRegistration, getEventBySlug } from "@/lib/server/events";
 import { useAppStore } from "@/lib/store";
 import type { PaymentMethod } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, digitsOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/events/$slug/register")({
   loader: async ({ params }) => {
@@ -37,7 +37,6 @@ function RegisterPage() {
   const navigate = useNavigate();
   const addApply = useAppStore((s) => s.addApply);
   const [nickname, setNickname] = useState("");
-  const [phone, setPhone] = useState("");
   const [wechat, setWechat] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [seats, setSeats] = useState(1);
@@ -49,12 +48,9 @@ function RegisterPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nickname.trim() || phone.replace(/\D/g, "").length < 8) {
-      toast.error("请填写姓名和手机号");
-      return;
-    }
-    if (!wechat.trim() && !whatsapp.trim()) {
-      toast.error("微信号或 WhatsApp 至少填一个");
+    const wa = digitsOnly(whatsapp);
+    if (!nickname.trim() || wa.length < 8) {
+      toast.error("请填写姓名和 WhatsApp");
       return;
     }
     setSubmitting(true);
@@ -63,11 +59,10 @@ function RegisterPage() {
         data: {
           slug: event.slug,
           nickname: nickname.trim(),
-          phone: phone.trim(),
           seats,
           paymentMethod: total <= 0 ? "free" : method,
           contactWechat: wechat.trim(),
-          contactWhatsapp: whatsapp.trim(),
+          contactWhatsapp: wa,
         },
       });
       addApply(created.code);
@@ -119,33 +114,24 @@ function RegisterPage() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="phone">手机号</Label>
-          <Input
-            id="phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            inputMode="tel"
-            required
-            placeholder="用于查询报名"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="wechat">微信号</Label>
-          <Input
-            id="wechat"
-            value={wechat}
-            onChange={(e) => setWechat(e.target.value)}
-            placeholder="和 WhatsApp 至少填一个"
-          />
-        </div>
-        <div className="space-y-1.5">
           <Label htmlFor="wa">WhatsApp</Label>
           <Input
             id="wa"
             value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            inputMode="tel"
-            placeholder="含区号更好，如 6011..."
+            onChange={(e) => setWhatsapp(digitsOnly(e.target.value).slice(0, 20))}
+            inputMode="numeric"
+            required
+            placeholder="含区号，如 601135550088"
+          />
+          <p className="text-xs text-muted">必填。用来联系你、查报名，同一局不能重复提交。</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="wechat">微信号（选填）</Label>
+          <Input
+            id="wechat"
+            value={wechat}
+            onChange={(e) => setWechat(e.target.value)}
+            placeholder="没有可以不填"
           />
         </div>
 

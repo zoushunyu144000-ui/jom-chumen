@@ -43,7 +43,7 @@ function EditEventPage() {
         setDraft(next);
       })
       .catch(() => toast.error("加载失败"));
-  }, [user, eventId]);
+  }, [user?.id, eventId]);
 
   if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
   if (!user) return <RedirectToSignIn />;
@@ -72,6 +72,8 @@ function EditEventPage() {
           city: parsed.city,
           venue: parsed.venue,
           address: parsed.address,
+          lat: parsed.lat,
+          lng: parsed.lng,
           startsAt: parsed.startsAt,
           endsAt: parsed.endsAt,
           price: parsed.price,

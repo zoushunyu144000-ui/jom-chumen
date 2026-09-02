@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getHostSettings, saveHostSettings } from "@/lib/server/profile";
+import { digitsOnly } from "@/lib/utils";
 
 export const Route = createFileRoute("/me/host")({ component: HostSettingsPage });
 
@@ -21,7 +22,7 @@ function HostSettingsPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     getHostSettings()
       .then((s) => {
         setWhatsapp(s.whatsapp);
@@ -30,19 +31,35 @@ function HostSettingsPage() {
         setTngQr(s.tng_qr);
       })
       .catch(() => undefined);
-  }, [user]);
+  }, [user?.id]);
 
   if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
   if (!user) return <RedirectToSignIn />;
+
+  async function saveQr(
+    field: "wechatQr" | "alipayQr" | "tngQr",
+    src: string,
+    label: string,
+  ) {
+    if (field === "wechatQr") setWechatQr(src);
+    if (field === "alipayQr") setAlipayQr(src);
+    if (field === "tngQr") setTngQr(src);
+    try {
+      await saveHostSettings({ data: { [field]: src } });
+      toast.success(`${label}已保存`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "收款码保存失败，请截一张更小的图再试");
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
       await saveHostSettings({
-        data: { whatsapp, wechatQr, alipayQr, tngQr },
+        data: { whatsapp: digitsOnly(whatsapp) },
       });
-      toast.success("已保存，之后发布的活动会带上");
+      toast.success("客服号码已保存，之后发布的活动会带上");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "保存失败");
     } finally {
@@ -63,37 +80,41 @@ function HostSettingsPage() {
           报名不会自动扣款。用户扫你的个人收款码，再把截图发到 WhatsApp。
         </p>
         <div className="space-y-1.5">
-          <Label htmlFor="wa">客服 WhatsApp</Label>
+          <Label htmlFor="wa">客服 WhatsApp / 手机号</Label>
           <Input
             id="wa"
             value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            inputMode="tel"
-            placeholder="含区号，如 6011..."
+            onChange={(e) => setWhatsapp(digitsOnly(e.target.value).slice(0, 20))}
+            inputMode="numeric"
+            placeholder="含区号，如 601135550088"
+          />
+          <p className="text-xs text-muted">只填数字。马来西亚先写 60，不要写 + 和空格。</p>
+        </div>
+        <div className="space-y-3">
+          <CoverPicker
+            value={wechatQr}
+            onChange={(src) => void saveQr("wechatQr", src, "微信收款码")}
+            label="微信收款码"
+            variant="qr"
+            hint="选相册里的收款码截图，选完会立刻保存"
+          />
+          <CoverPicker
+            value={alipayQr}
+            onChange={(src) => void saveQr("alipayQr", src, "支付宝收款码")}
+            label="支付宝收款码"
+            variant="qr"
+            hint="选相册里的收款码截图，选完会立刻保存"
+          />
+          <CoverPicker
+            value={tngQr}
+            onChange={(src) => void saveQr("tngQr", src, "TNG 收款码")}
+            label="TNG 收款码"
+            variant="qr"
+            hint="选相册里的收款码截图，选完会立刻保存"
           />
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div>
-            <Label>微信收款码</Label>
-            <div className="mt-2">
-              <CoverPicker value={wechatQr} onChange={setWechatQr} label="微信" variant="qr" />
-            </div>
-          </div>
-          <div>
-            <Label>支付宝</Label>
-            <div className="mt-2">
-              <CoverPicker value={alipayQr} onChange={setAlipayQr} label="支付宝" variant="qr" />
-            </div>
-          </div>
-          <div>
-            <Label>TNG</Label>
-            <div className="mt-2">
-              <CoverPicker value={tngQr} onChange={setTngQr} label="TNG" variant="qr" />
-            </div>
-          </div>
-        </div>
         <Button type="submit" className="w-full" disabled={busy}>
-          {busy ? "保存中…" : "保存默认设置"}
+          {busy ? "保存中…" : "保存客服号码"}
         </Button>
       </form>
     </main>

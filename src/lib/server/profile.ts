@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import type { ProfileRecord } from "@/lib/types";
+import { digitsOnly } from "@/lib/utils";
 
 export const getProfile = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -83,24 +84,36 @@ export const saveHostSettings = createServerFn({ method: "POST" })
   .validator((data: unknown) =>
     z
       .object({
-        whatsapp: z.string().trim().max(20).default(""),
-        wechatQr: z.string().max(1_500_000).default(""),
-        alipayQr: z.string().max(1_500_000).default(""),
-        tngQr: z.string().max(1_500_000).default(""),
+        whatsapp: z.string().trim().max(24).optional(),
+        wechatQr: z.string().max(1_500_000).optional(),
+        alipayQr: z.string().max(1_500_000).optional(),
+        tngQr: z.string().max(1_500_000).optional(),
       })
       .parse(data),
   )
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const rows = await sql<{
+      whatsapp: string;
+      wechat_qr: string;
+      alipay_qr: string;
+      tng_qr: string;
+    }>`select * from host_settings where user_id = ${context.userId} limit 1`;
+    const prev = rows[0];
+    const whatsapp =
+      data.whatsapp !== undefined ? digitsOnly(data.whatsapp).slice(0, 20) : (prev?.whatsapp ?? "");
+    const wechatQr = data.wechatQr !== undefined ? data.wechatQr : (prev?.wechat_qr ?? "");
+    const alipayQr = data.alipayQr !== undefined ? data.alipayQr : (prev?.alipay_qr ?? "");
+    const tngQr = data.tngQr !== undefined ? data.tngQr : (prev?.tng_qr ?? "");
     await sql`
       insert into host_settings (user_id, whatsapp, wechat_qr, alipay_qr, tng_qr)
       values (
         ${context.userId},
-        ${data.whatsapp},
-        ${data.wechatQr},
-        ${data.alipayQr},
-        ${data.tngQr}
+        ${whatsapp},
+        ${wechatQr},
+        ${alipayQr},
+        ${tngQr}
       )
       on conflict (user_id) do update set
         whatsapp = excluded.whatsapp,

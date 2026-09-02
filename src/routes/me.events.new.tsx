@@ -32,7 +32,7 @@ function NewEventPage() {
         if (rows[0]) setDraft((d) => ({ ...d, clubId: rows[0].id }));
       })
       .catch(() => setClubs([]));
-  }, [user]);
+  }, [user?.id]);
 
   if (isPending) return <main className="p-6">加载中…</main>;
   if (!user) return <RedirectToSignIn />;
@@ -72,6 +72,8 @@ function NewEventPage() {
           city: parsed.city,
           venue: parsed.venue,
           address: parsed.address,
+          lat: parsed.lat,
+          lng: parsed.lng,
           startsAt: parsed.startsAt,
           endsAt: parsed.endsAt,
           price: parsed.price,

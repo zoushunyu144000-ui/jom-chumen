@@ -142,6 +142,8 @@ type Seed = Omit<
   | "wechatQr"
   | "alipayQr"
   | "tngQr"
+  | "lat"
+  | "lng"
 >;
 
 export const EVENT_SEED: Seed[] = [

@@ -156,8 +156,10 @@ const createEventSchema = z.object({
     "yoga",
   ]),
   city: z.enum(["penang", "kl", "jb", "singapore", "bangkok"]),
-  venue: z.string().trim().min(2).max(60),
-  address: z.string().trim().min(2).max(120),
+  venue: z.string().trim().min(2).max(80),
+  address: z.string().trim().min(2).max(200),
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
   startsAt: z.string().min(1),
   endsAt: z.string().min(1),
   price: z.number().min(0).max(9999),
@@ -216,15 +218,17 @@ export const createEvent = createServerFn({ method: "POST" })
     const alipayQr = host?.alipay_qr || "/pay/alipay.svg";
     const tngQr = host?.tng_qr || "/pay/tng.svg";
 
+    const lat = data.lat ?? null;
+    const lng = data.lng ?? null;
     await sql`
       insert into events (
-        id, slug, title, subtitle, category, city, venue, address,
+        id, slug, title, subtitle, category, city, venue, address, lat, lng,
         starts_at, ends_at, currency, price, capacity, sold, cover_url,
         description, highlights, host_name, host_note, level,
         user_id, club_id, body, open, whatsapp, wechat_qr, alipay_qr, tng_qr
       ) values (
         ${id}, ${slug}, ${data.title}, ${data.subtitle}, ${data.category},
-        ${data.city}, ${data.venue}, ${data.address},
+        ${data.city}, ${data.venue}, ${data.address}, ${lat}, ${lng},
         ${starts.toISOString()}, ${ends.toISOString()}, ${currency},
         ${data.price}, ${data.capacity}, ${0}, ${data.coverUrl},
         ${description}, ${JSON.stringify(data.highlights)}, ${clubs[0].name},
@@ -314,6 +318,8 @@ export const updateEvent = createServerFn({ method: "POST" })
         city = ${data.city},
         venue = ${data.venue},
         address = ${data.address},
+        lat = ${data.lat ?? null},
+        lng = ${data.lng ?? null},
         starts_at = ${starts.toISOString()},
         ends_at = ${ends.toISOString()},
         currency = ${currency},

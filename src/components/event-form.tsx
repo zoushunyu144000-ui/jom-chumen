@@ -1,5 +1,6 @@
 import { CoverPicker } from "@/components/cover-picker";
 import { BlockEditor } from "@/components/block-editor";
+import { PlacePicker } from "@/components/place-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,8 @@ export type EventDraft = {
   city: Exclude<CityId, "all">;
   venue: string;
   address: string;
+  lat: number | null;
+  lng: number | null;
   startsAt: string;
   endsAt: string;
   price: string;
@@ -56,6 +59,8 @@ export function emptyEventDraft(): EventDraft {
     city: "penang",
     venue: "",
     address: "",
+    lat: null,
+    lng: null,
     startsAt: range.start,
     endsAt: range.end,
     price: "0",
@@ -181,21 +186,13 @@ export function EventForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="venue">地点</Label>
-        <Input
-          id="venue"
-          value={value.venue}
-          onChange={(e) => set({ venue: e.target.value })}
-          placeholder="集合点名称"
-          required
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="address">详细地址</Label>
-        <Input
-          id="address"
-          value={value.address}
-          onChange={(e) => set({ address: e.target.value })}
-          placeholder="方便大家导航"
+        <PlacePicker
+          venue={value.venue}
+          address={value.address}
+          lat={value.lat}
+          lng={value.lng}
+          city={value.city}
+          onChange={(place) => set(place)}
         />
       </div>
 
@@ -281,6 +278,8 @@ export function draftFromEvent(event: {
   city: Exclude<CityId, "all">;
   venue: string;
   address: string;
+  lat: number | null;
+  lng: number | null;
   startsAt: string;
   endsAt: string;
   price: number;
@@ -299,6 +298,8 @@ export function draftFromEvent(event: {
     city: event.city,
     venue: event.venue,
     address: event.address,
+    lat: event.lat,
+    lng: event.lng,
     startsAt: toLocalInput(new Date(event.startsAt)),
     endsAt: toLocalInput(new Date(event.endsAt)),
     price: String(event.price),
@@ -320,6 +321,8 @@ export function parseEventDraft(value: EventDraft) {
     city: value.city,
     venue: value.venue.trim(),
     address: value.address.trim() || value.venue.trim(),
+    lat: value.lat,
+    lng: value.lng,
     startsAt: new Date(value.startsAt).toISOString(),
     endsAt: new Date(value.endsAt).toISOString(),
     price: Number(value.price) || 0,
