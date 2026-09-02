@@ -2,6 +2,8 @@
 
 东南亚中文兴趣局报名产品。对标粗门：发现局、俱乐部发起、扫码付款、主办人人工确认。
 
+**线上网址：** [https://jom-chumen-2026.vercel.app](https://jom-chumen-2026.vercel.app)
+
 **GitHub：** [zoushunyu144000-ui/jom-chumen](https://github.com/zoushunyu144000-ui/jom-chumen)
 
 | 文档 | 给谁看 |
@@ -14,7 +16,7 @@
 
 ## 现在能做什么
 
-- 发现活动（槟城 / 吉隆坡 / 新山 / 新加坡 / 曼谷）
+- 发现活动（榎城 / 吉隆坡 / 新山 / 新加坡 / 曼谷）
 - 报名申请：提交 ≠ 成功。用户自己转微信 / 支付宝 / TNG / 现金，加 WhatsApp，主办人点同意才出票
 - 登录：Google、X、邮箱密码
 - 俱乐部：创建、发活动、改资料
@@ -41,8 +43,10 @@ npm run dev
 
 没有 `DATABASE_URL` 时用内存库，**重启就丢数据**。要给真人用，必须接上 Postgres。
 
-## 任务进度（2026-09-02）
+线上 Vercel 需要：`DATABASE_URL`、`VITE_AUTH_ENABLED=true`、`BETTER_AUTH_URL=https://jom-chumen-2026.vercel.app`、`BETTER_AUTH_SECRET`。
+
+## 任务进度（2026-09-03）
 
 - 产品闭环（发现 → 申请 → 人工确认 → 票）已能演示
-- 持久数据库、图片存储、自建部署 **未完成**
-- 下一步见 [docs/ROADMAP.md](docs/ROADMAP.md) 和 GitHub Issues
+- 已部署到 Vercel：https://jom-chumen-2026.vercel.app
+- Neon 数据库已接项目；登录要等环境变量 + 重新部署生效
