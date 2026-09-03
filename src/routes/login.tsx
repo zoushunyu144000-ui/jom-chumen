@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { saveProfile } from "@/lib/server/profile";
+import { saveGender } from "@/lib/server/gender";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
@@ -39,16 +39,9 @@ function Login() {
         });
         if (result.error) throw new Error(result.error.message || "注册失败");
         try {
-          await saveProfile({
-            data: {
-              displayName: name.trim() || email.split("@")[0] || "Jom",
-              avatarUrl: "",
-              tags: [],
-              gender,
-            },
-          });
+          await saveGender({ data: { gender: gender as "female" | "male" | "other" } });
         } catch {
-          /* profile can be completed later */
+          /* ignore */
         }
       } else {
         const result = await authClient.signIn.email({ email, password });
@@ -95,15 +88,13 @@ function Login() {
                   <>
                     <div className="space-y-1.5">
                       <Label htmlFor="name">称呼</Label>
-                      <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="写在俱乐部和票上" />
+                      <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
                     </div>
                     <div className="space-y-1.5">
                       <Label>性别</Label>
                       <div className="grid grid-cols-3 gap-2">
                         {[{ id: "female", name: "女" }, { id: "male", name: "男" }, { id: "other", name: "不展示" }].map((item) => (
-                          <button key={item.id} type="button" onClick={() => setGender(item.id)} className={`h-11 rounded-lg text-sm shadow-card ${gender === item.id ? "bg-lime" : "bg-surface"}`}>
-                            {item.name}
-                          </button>
+                          <button key={item.id} type="button" onClick={() => setGender(item.id)} className={`h-11 rounded-lg text-sm shadow-card ${gender === item.id ? "bg-lime" : "bg-surface"}`}>{item.name}</button>
                         ))}
                       </div>
                     </div>
@@ -111,11 +102,11 @@ function Login() {
                 ) : null}
                 <div className="space-y-1.5">
                   <Label htmlFor="email">邮箱</Label>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="password">密码</Label>
-                  <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete={mode === "up" ? "new-password" : "current-password"} placeholder="至少 8 位" />
+                  <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
                 </div>
                 {error ? <p className="text-sm text-danger">{error}</p> : null}
                 <Button type="submit" className="w-full" disabled={busy}>{busy ? "请稍候…" : mode === "in" ? "登录" : "注册并进入"}</Button>
@@ -126,13 +117,11 @@ function Login() {
             <div className="mt-8 space-y-4">
               <div className="flex items-center gap-3"><Separator className="flex-1" /><span className="text-xs text-muted">或</span><Separator className="flex-1" /></div>
               <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={() => void onGoogle()}>使用 Google 继续</Button>
-              <p className="text-center text-xs text-muted">谷歌登录后请在资料里补性别</p>
+              <p className="text-center text-xs text-muted">谷歌登录后请到资料里补性别</p>
             </div>
           ) : null}
         </>
-      ) : (
-        <p className="mt-8 text-sm text-muted">登录暂未开启。</p>
-      )}
+      ) : null}
     </main>
   );
 }
