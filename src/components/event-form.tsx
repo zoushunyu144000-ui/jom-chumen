@@ -33,6 +33,8 @@ export type EventDraft = {
   hostNote: string;
   highlights: string;
   body: BodyBlock[];
+  refundHours: string;
+  refundFeePercent: string;
 };
 
 function pad(n: number) {
@@ -75,6 +77,8 @@ export function emptyEventDraft(): EventDraft {
     hostNote: "",
     highlights: "",
     body: [{ type: "p", text: "" }],
+    refundHours: "24",
+    refundFeePercent: "50",
   };
 }
 
@@ -101,12 +105,10 @@ export function EventForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label>活动图片</Label>
+        <Label>封面和滑动图</Label>
+        <p className="mt-1 text-xs text-muted">可一次多选。第一张是封面，后面的图在活动页左右滑，不会跑进下面文案。</p>
         <div className="mt-2">
-          <PhotoStrip
-            photos={value.photos}
-            onChange={(photos) => set({ photos, coverUrl: photos[0] ?? "" })}
-          />
+          <PhotoStrip photos={value.photos} onChange={(photos) => set({ photos, coverUrl: photos[0] ?? "" })} />
         </div>
       </div>
 
@@ -121,21 +123,14 @@ export function EventForm({
           <Label>俱乐部</Label>
           <NativeSelect value={value.clubId} onChange={(e) => set({ clubId: e.target.value })}>
             {clubs.map((club) => (
-              <option key={club.id} value={club.id}>
-                {club.name}
-              </option>
+              <option key={club.id} value={club.id}>{club.name}</option>
             ))}
           </NativeSelect>
         </div>
       ) : allowNewClub ? (
         <div className="space-y-1.5">
           <Label htmlFor="new-club">新俱乐部名称</Label>
-          <Input
-            id="new-club"
-            value={value.newClubName}
-            onChange={(e) => set({ newClubName: e.target.value })}
-            placeholder="沠有俱乐部的话，这里会一起建"
-          />
+          <Input id="new-club" value={value.newClubName} onChange={(e) => set({ newClubName: e.target.value })} placeholder="沠有俱乐部的话，这里会一起建" />
         </div>
       ) : (
         <p className="text-sm text-muted">先创建俱乐部再编辑活动。</p>
@@ -196,9 +191,32 @@ export function EventForm({
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
+          <Label>提前多少小时可全额退</Label>
+          <NativeSelect value={value.refundHours} onChange={(e) => set({ refundHours: e.target.value })}>
+            <option value="48">48 小时</option>
+            <option value="24">24 小时</option>
+            <option value="12">12 小时</option>
+            <option value="6">6 小时</option>
+            <option value="0">不支持全额退</option>
+          </NativeSelect>
+        </div>
+        <div className="space-y-1.5">
+          <Label>逾期扣费</Label>
+          <NativeSelect value={value.refundFeePercent} onChange={(e) => set({ refundFeePercent: e.target.value })}>
+            <option value="0">不扣</option>
+            <option value="30">扣 30%</option>
+            <option value="50">扣 50%</option>
+            <option value="100">不退款</option>
+          </NativeSelect>
+        </div>
+      </div>
+      <p className="text-xs text-muted">例如提前 24 小时申请退款免手续费；不够 24 小时则扣 50%。</p>
+
       <div>
-        <Label>活动简介</Label>
-        <p className="mb-2 mt-1 text-xs text-muted">可以插入正文、小标题和图片。</p>
+        <Label>活动简介（文案）</Label>
+        <p className="mb-2 mt-1 text-xs text-muted">这里的插图只出现在下方文案里，不和封面滑动混在一起。</p>
         <BlockEditor value={value.body} onChange={(body) => set({ body })} />
       </div>
 
@@ -233,14 +251,14 @@ export function draftFromEvent(event: {
   highlights: string[];
   description?: string;
   body: BodyBlock[];
+  refundHours?: number;
+  refundFeePercent?: number;
 }): EventDraft {
   const gallery = event.body.filter(
     (block): block is Extract<BodyBlock, { type: "img" }> =>
-      block.type === "img" && block.caption === GALLERY_CAPTION && Boolean(block.src),
+      block.type === "img" && block.caption === GALLERY_CAPTION,
   );
-  const photos = [event.coverUrl, ...gallery.map((b) => b.src)].filter(
-    (src, i, arr) => src && arr.indexOf(src) === i,
-  );
+  const photos = [event.coverUrl, ...gallery.map((b) => b.src)].filter((src, i, arr) => src && arr.indexOf(src) === i);
   const body = event.body.filter((block) => !(block.type === "img" && block.caption === GALLERY_CAPTION));
   return {
     clubId: event.clubId ?? "",
@@ -263,17 +281,15 @@ export function draftFromEvent(event: {
     hostNote: "",
     highlights: event.highlights.join("\n"),
     body: body.length ? body : [{ type: "p", text: event.description ?? "" }],
+    refundHours: String(event.refundHours ?? 24),
+    refundFeePercent: String(event.refundFeePercent ?? 50),
   };
 }
 
 export function parseEventDraft(value: EventDraft) {
   const photos = value.photos.filter(Boolean);
   const coverUrl = photos[0] ?? value.coverUrl;
-  const galleryBlocks: BodyBlock[] = photos.slice(1).map((src) => ({
-    type: "img",
-    src,
-    caption: GALLERY_CAPTION,
-  }));
+  const galleryBlocks: BodyBlock[] = photos.slice(1).map((src) => ({ type: "img", src, caption: GALLERY_CAPTION }));
   const content = value.body.filter((block) => {
     if (block.type === "img") return block.src && block.caption !== GALLERY_CAPTION;
     if (block.type === "ul") return block.items.some((item) => item.trim());
@@ -303,5 +319,7 @@ export function parseEventDraft(value: EventDraft) {
     level: "all" as const,
     body,
     description,
+    refundHours: Number(value.refundHours) || 24,
+    refundFeePercent: Number(value.refundFeePercent) || 50,
   };
 }
