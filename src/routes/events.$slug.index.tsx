@@ -9,21 +9,22 @@ import { GALLERY_CAPTION } from "@/components/event-form";
 import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
 import { formatPrice, formatRange } from "@/lib/format";
-import { eventOgImageUrl, eventShareUrl } from "@/lib/public-url";
-import { getEventBySlug } from "@/lib/server/events";
+import { eventOgImageUrl, eventShareUrl, publicSiteUrl } from "@/lib/public-url";
+import { getPublicEvent } from "@/lib/server/event-public";
 
 export const Route = createFileRoute("/events/$slug/")({
   loader: async ({ params }) => {
-    const event = await getEventBySlug({ data: { slug: params.slug } });
+    const event = await getPublicEvent({ data: { slug: params.slug } });
     if (!event) throw notFound();
     return { event };
   },
+  staleTime: 15_000,
   head: ({ loaderData }) => {
     const event = loaderData?.event;
     if (!event) return {};
     const url = eventShareUrl(event.slug);
-    const image = eventOgImageUrl(event.slug);
-    const desc = `${formatPrice(event.price, event.currency)} · ${formatRange(event.startsAt, event.endsAt, event.currency)} · ${event.venue}`;
+    const image = `${publicSiteUrl()}/api/media/${event.slug}?kind=cover`;
+    const desc = `${formatPrice(event.price, event.currency)} · ${event.venue}`;
     return {
       meta: [
         { title: `${event.title} · Jom 出门局` },
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/events/$slug/")({
         { property: "og:description", content: desc },
         { property: "og:url", content: url },
         { property: "og:image", content: image },
+        { property: "og:image:type", content: "image/jpeg" },
         { property: "og:image:width", content: "1200" },
         { property: "og:image:height", content: "630" },
         { name: "twitter:card", content: "summary_large_image" },
@@ -70,6 +72,7 @@ function EventDetail() {
     return Boolean(block.text?.trim());
   });
   const hasMap = event.lat != null && event.lng != null;
+  const apply = event.myApply;
 
   return (
     <main className="pb-28">
@@ -86,11 +89,16 @@ function EventDetail() {
       <section className="px-4 pt-4">
         <p className="text-xs font-medium text-muted">{cityName(event.city)}</p>
         <h1 className="mt-1 font-display text-[1.7rem] font-bold leading-tight tracking-tight">{event.title}</h1>
-        <ul className="mt-4 space-y-3 rounded-xl bg-surface p-4 text-sm shadow-card">
-          <li className="flex gap-3"><Calendar className="mt-0.5 size-4 shrink-0 text-muted" /><span>{formatRange(event.startsAt, event.endsAt, event.currency)}</span></li>
-          <li className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" /><span>{event.venue}{event.address && event.address !== event.venue ? <span className="mt-0.5 block text-xs text-muted">{event.address}</span> : null}</span></li>
-          <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-muted" /><span>{formatPrice(event.price, event.currency)}</span></li>
-          <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-muted" /><span>已报 {event.booked}/{event.capacity}{event.remaining > 0 ? ` · 还剩 ${event.remaining}` : " · 名额已满"}</span></li>
+        {apply ? (
+          <p className="mt-2 inline-flex rounded-full bg-lime px-3 py-1 text-xs font-semibold text-ink">
+            {apply.status === "pending" ? "已预报名，等审核" : "已报名成功"}
+          </p>
+        ) : null}
+        <ul className="mt-4 space-y-3 rounded-xl bg-ink p-4 text-sm text-surface shadow-card">
+          <li className="flex gap-3"><Calendar className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span></li>
+          <li className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{event.venue}{event.address && event.address !== event.venue ? <span className="mt-0.5 block text-xs text-surface/70">{event.address}</span> : null}</span></li>
+          <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-display text-lg font-bold text-lime">{formatPrice(event.price, event.currency)}</span></li>
+          <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">已报 {event.booked}/{event.capacity}{event.remaining > 0 ? ` · 还剩 ${event.remaining}` : " · 名额已满"}</span></li>
         </ul>
         {hasMap ? <EventMap lat={event.lat as number} lng={event.lng as number} label={event.venue} className="mt-4" /> : null}
         {event.clubId && event.clubName ? (
@@ -98,6 +106,11 @@ function EventDetail() {
             <div className="flex size-11 items-center justify-center rounded-full bg-lime font-display text-sm font-bold">{event.clubName.slice(0, 1)}</div>
             <div><p className="text-sm font-medium">{event.clubName}</p><p className="text-xs text-muted">查看俱乐部</p></div>
           </Link>
+        ) : null}
+        {event.clubId ? (
+          <Button asChild variant="outline" className="mt-3 w-full">
+            <Link to="/chat/$id" params={{ id: event.clubId }} search={{ from: event.slug }}>联系主办 / 发私信</Link>
+          </Button>
         ) : null}
         {hasIntro ? (
           <>
@@ -120,16 +133,30 @@ function EventDetail() {
             </ul>
           </>
         ) : null}
-        <Button type="button" variant="outline" className="mt-6 w-full" onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="分享活动"]')?.click()}>
-          分享这场活动
-        </Button>
+        <div className="mt-6">
+          <EventShareButton event={event} />
+        </div>
       </section>
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 border-t border-line bg-paper/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div>
           <p className="font-display text-xl font-bold tabular-nums leading-none">{formatPrice(event.price, event.currency)}</p>
-          <p className="mt-1 text-[11px] text-muted">{!event.open ? "已停止报名" : soldOut ? "名额已满，仍可提交" : `已报 ${event.booked}/${event.capacity}`}</p>
+          <p className="mt-1 text-[11px] text-muted">
+            {apply?.status === "pending"
+              ? "已预报名"
+              : apply?.status === "approved" || apply?.status === "paid"
+                ? "报名成功"
+                : !event.open
+                  ? "已停止报名"
+                  : soldOut
+                    ? "名额已满，仍可提交"
+                    : `已报 ${event.booked}/${event.capacity}`}
+          </p>
         </div>
-        {!event.open ? (
+        {apply ? (
+          <Button asChild className="ml-auto min-w-36">
+            <a href={`/apply/${apply.code}`}>{apply.status === "pending" ? "查看预报名" : "查看申请"}</a>
+          </Button>
+        ) : !event.open ? (
           <Button className="ml-auto min-w-36" disabled>已停止报名</Button>
         ) : (
           <Button asChild className="ml-auto min-w-36">
