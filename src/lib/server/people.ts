@@ -15,6 +15,7 @@ export type Attendee = {
   name: string;
   avatarUrl: string;
   gender: string;
+  pending: boolean;
 };
 
 export const listEventAttendees = createServerFn({ method: "GET" })
@@ -30,8 +31,9 @@ export const listEventAttendees = createServerFn({ method: "GET" })
       avatar_url: string | null;
       user_image: string | null;
       gender: string | null;
+      payment_status: string;
     }>`
-      select r.user_id, r.nickname,
+      select r.user_id, r.nickname, r.payment_status,
         p.display_name, u.name as user_name,
         p.avatar_url, u.image as user_image,
         coalesce(p.gender, '') as gender
@@ -40,8 +42,8 @@ export const listEventAttendees = createServerFn({ method: "GET" })
       left join profiles p on p.user_id = r.user_id
       left join "user" u on u.id = r.user_id
       where e.slug = ${data.slug}
-        and r.payment_status in ('approved', 'paid')
-      order by r.created_at asc
+        and r.payment_status in ('approved', 'paid', 'pending')
+      order by case when r.payment_status in ('approved','paid') then 0 else 1 end, r.created_at asc
       limit 40
     `;
     return rows.map((row) => ({
@@ -49,6 +51,7 @@ export const listEventAttendees = createServerFn({ method: "GET" })
       name: row.display_name || row.user_name || row.nickname,
       avatarUrl: shortAvatar(row.avatar_url) || shortAvatar(row.user_image),
       gender: row.gender || "",
+      pending: row.payment_status === "pending",
     }));
   });
 
