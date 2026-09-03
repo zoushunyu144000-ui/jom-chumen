@@ -23,14 +23,36 @@ export type ChatListItem = {
 };
 
 async function addMember(chatId: string, userId: string) {
+  if (!userId) return;
   const sql = await getSql();
-  await sql`insert into chat_members (chat_id, user_id) values (${chatId}, ${userId}) on conflict do nothing`;
+  try {
+    await sql`insert into chat_members (chat_id, user_id) values (${chatId}, ${userId}) on conflict do nothing`;
+  } catch {
+    /* ignore */
+  }
+}
+
+async function ensureChat(id: string, title: string, clubId?: string) {
+  const sql = await getSql();
+  try {
+    await sql`insert into chats (id, title) values (${id}, ${title}) on conflict (id) do nothing`;
+  } catch {
+    /* ignore */
+  }
+  if (clubId) {
+    try {
+      await sql`update chats set club_id = ${clubId} where id = ${id} and (club_id is null or club_id = '')`;
+    } catch {
+      /* column may be missing */
+    }
+  }
 }
 
 export async function resolveChatId(rawId: string, userId: string) {
   await ensureAppSchema();
   const sql = await getSql();
   if (rawId.startsWith("chat_")) {
+    await ensureChat(rawId, "私信");
     await addMember(rawId, userId);
     return rawId;
   }
@@ -40,19 +62,22 @@ export async function resolveChatId(rawId: string, userId: string) {
     `;
     if (!club[0]) throw new Error("俱乐部不存在");
     const id = `chat_${club[0].id}_${userId}`;
-    await sql`insert into chats (id, club_id, title) values (${id}, ${club[0].id}, ${club[0].name}) on conflict (id) do nothing`;
+    await ensureChat(id, club[0].name || "私信", club[0].id);
     await addMember(id, userId);
     await addMember(id, club[0].user_id);
-    const admins = await sql<{ user_id: string }>`select user_id from club_members where club_id = ${club[0].id}`;
-    for (const admin of admins) await addMember(id, admin.user_id);
+    try {
+      const admins = await sql<{ user_id: string }>`select user_id from club_members where club_id = ${club[0].id}`;
+      for (const admin of admins) await addMember(id, admin.user_id);
+    } catch {
+      /* ignore */
+    }
     return id;
   }
   const other = await sql<{ id: string; name: string | null }>`select id, name from "user" where id = ${rawId} limit 1`;
   if (!other[0]) throw new Error("找不到这个聊天");
   const pair = [userId, rawId].sort();
   const id = `chat_dm_${pair[0]}_${pair[1]}`;
-  const title = other[0].name || "私信";
-  await sql`insert into chats (id, title) values (${id}, ${title}) on conflict (id) do nothing`;
+  await ensureChat(id, other[0].name || "私信");
   await addMember(id, userId);
   await addMember(id, rawId);
   return id;
