@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ImagePlus, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, ImagePlus, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,29 +22,22 @@ function ChatPage() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [bottom, setBottom] = useState(0);
+  const [preview, setPreview] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const vv = window.visualViewport;
     const sync = () => {
-      if (!vv) {
-        setBottom(0);
-        return;
-      }
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setBottom(inset);
+      if (!vv) return setBottom(0);
+      setBottom(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
     };
     sync();
     vv?.addEventListener("resize", sync);
     vv?.addEventListener("scroll", sync);
-    window.addEventListener("focusin", sync);
-    window.addEventListener("focusout", sync);
     return () => {
       vv?.removeEventListener("resize", sync);
       vv?.removeEventListener("scroll", sync);
-      window.removeEventListener("focusin", sync);
-      window.removeEventListener("focusout", sync);
     };
   }, []);
 
@@ -86,22 +79,22 @@ function ChatPage() {
     }
   }
 
-  async function onFile(file: File | undefined, kind: "image" | "file") {
+  async function onFile(file: File | undefined) {
     if (!file) return;
     try {
-      if (kind === "image") {
-        const src = await compressImage(file, { maxEdge: 1000, quality: 0.7, maxChars: 220_000 });
+      if (file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
+        const src = await compressImage(file, { maxEdge: 1200, quality: 0.74, maxChars: 280_000 });
         await send("image", src, file.name);
-      } else {
-        if (file.size > 400_000) throw new Error("文件请小于 400KB");
-        const src = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ""));
-          reader.onerror = () => reject(new Error("读取失败"));
-          reader.readAsDataURL(file);
-        });
-        await send("file", src, file.name);
+        return;
       }
+      if (file.size > 400_000) throw new Error("文件请小于 400KB");
+      const src = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("读取失败"));
+        reader.readAsDataURL(file);
+      });
+      await send("file", src, file.name);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "上传失败");
     }
@@ -113,15 +106,27 @@ function ChatPage() {
         <Link to="/messages" className="flex size-11 items-center justify-center" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
-        <h1 className="font-display text-lg font-semibold">{title}</h1>
+        <h1 className="truncate font-display text-lg font-semibold">{title}</h1>
       </header>
-      <div className="flex-1 space-y-2 overflow-y-auto px-4" style={{ paddingBottom: bottom + 72 }}>
+      <div className="flex-1 space-y-1.5 overflow-y-auto px-3" style={{ paddingBottom: bottom + 72 }}>
         {rows === null ? <PageLoading label="拉取消息" /> : null}
         {(rows ?? []).map((row) => (
-          <div key={row.id} className={cn("max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-card", row.mine ? "ml-auto bg-lime" : "bg-surface")}>
-            {row.kind === "image" ? <img src={row.body} alt="" className="max-h-48 rounded-md object-cover" /> : row.kind === "file" ? (
-              <a href={row.body} download={row.fileName} className="underline">{row.fileName || "文件"}</a>
-            ) : <p className="whitespace-pre-wrap">{row.body}</p>}
+          <div key={row.id} className={cn("flex", row.mine ? "justify-end" : "justify-start")}>
+            <div className={cn("max-w-[78%] rounded-2xl text-[15px] leading-snug", row.kind === "image" ? "overflow-hidden bg-transparent p-0" : row.mine ? "bg-lime px-3 py-1.5" : "bg-surface px-3 py-1.5")}>
+              {row.kind === "image" ? (
+                <button type="button" onClick={() => setPreview(row.body)}>
+                  <img src={row.body} alt="" className="max-h-56 max-w-[78vw] rounded-2xl object-cover" />
+                </button>
+              ) : row.kind === "file" && row.body.startsWith("data:image") ? (
+                <button type="button" onClick={() => setPreview(row.body)}>
+                  <img src={row.body} alt="" className="max-h-56 rounded-2xl object-cover" />
+                </button>
+              ) : row.kind === "file" ? (
+                <a href={row.body} download={row.fileName} className="underline">{row.fileName || "文件"}</a>
+              ) : (
+                <p className="w-fit whitespace-pre-wrap break-words">{row.body}</p>
+              )}
+            </div>
           </div>
         ))}
         <div ref={end} />
@@ -135,16 +140,17 @@ function ChatPage() {
         }}
       >
         <label className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface">
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0], "image")} />
+          <input type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
           <ImagePlus className="size-4" />
-        </label>
-        <label className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface">
-          <input type="file" className="hidden" onChange={(e) => void onFile(e.target.files?.[0], "file")} />
-          <Paperclip className="size-4" />
         </label>
         <Input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} placeholder="说点什么…" autoComplete="off" enterKeyHint="send" />
         <Button type="submit" size="sm" disabled={busy || !text.trim()}><Send className="size-4" /></Button>
       </form>
+      {preview ? (
+        <button type="button" className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4" onClick={() => setPreview("")}>
+          <img src={preview} alt="" className="max-h-[88dvh] max-w-full rounded-lg object-contain" />
+        </button>
+      ) : null}
     </main>
   );
 }
