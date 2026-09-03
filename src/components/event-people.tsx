@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { listEventAttendees, type Attendee } from "@/lib/server/people";
 
 function Face({ person }: { person: Attendee }) {
-  if (person.avatarUrl) {
-    return <img src={person.avatarUrl} alt="" className="size-9 rounded-full object-cover" />;
-  }
-  return (
+  const ring = person.pending ? "ring-2 ring-dashed ring-ink/30" : "ring-2 ring-paper";
+  const inner = person.avatarUrl ? (
+    <img src={person.avatarUrl} alt="" className="size-9 rounded-full object-cover" />
+  ) : (
     <span className="flex size-9 items-center justify-center rounded-full bg-lime text-xs font-bold">
       {(person.name || "?").slice(0, 1)}
     </span>
   );
+  return <span className={`relative rounded-full ${ring}`}>{inner}{person.pending ? <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-paper px-1 text-[9px] text-muted">预</span> : null}</span>;
 }
 
 const GENDER: Record<string, string> = { female: "女", male: "男", other: "其他" };
@@ -25,23 +26,21 @@ export function EventPeople({ slug, booked }: { slug: string; booked: number }) 
   }, [slug]);
 
   if (booked <= 0 && people.length === 0) return null;
+  const pending = people.filter((p) => p.pending).length;
 
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
         <div className="flex -space-x-2">
           {people.slice(0, 8).map((person, i) => (
-            <button
-              key={`${person.userId || person.name}-${i}`}
-              type="button"
-              className="rounded-full ring-2 ring-paper"
-              onClick={() => setOpen(person)}
-            >
+            <button key={`${person.userId || person.name}-${i}`} type="button" onClick={() => setOpen(person)}>
               <Face person={person} />
             </button>
           ))}
         </div>
-        <p className="text-xs text-muted">{people.length || booked} 人已报名</p>
+        <p className="text-xs text-muted">
+          {people.length} 人在名单{pending ? `·${pending} 人预报名` : ""}
+        </p>
       </div>
       {open ? (
         <div className="fixed inset-0 z-50 flex items-end bg-ink/40" onClick={() => setOpen(null)}>
@@ -51,19 +50,15 @@ export function EventPeople({ slug, booked }: { slug: string; booked: number }) 
               <Face person={open} />
               <div>
                 <p className="font-medium">{open.name}</p>
-                <p className="text-xs text-muted">{GENDER[open.gender] || "性别未填"}</p>
+                <p className="text-xs text-muted">{GENDER[open.gender] || "性别未填"}{open.pending ? " · 预报名" : ""}</p>
               </div>
             </div>
             {open.userId ? (
-              <button
-                type="button"
-                className="mt-4 h-11 w-full rounded-lg bg-lime text-sm font-semibold"
-                onClick={() => void navigate({ to: "/users/$id", params: { id: open.userId as string } })}
-              >
+              <button type="button" className="mt-4 h-11 w-full rounded-lg bg-lime text-sm font-semibold" onClick={() => void navigate({ to: "/users/$id", params: { id: open.userId as string } })}>
                 看他的主页
               </button>
             ) : (
-              <p className="mt-4 text-sm text-muted">这位报名时沠有登录，沠有主页。</p>
+              <p className="mt-4 text-sm text-muted">这位报名时沠有登录。</p>
             )}
             <button type="button" className="mt-2 h-11 w-full text-sm text-muted" onClick={() => setOpen(null)}>关闭</button>
           </div>
