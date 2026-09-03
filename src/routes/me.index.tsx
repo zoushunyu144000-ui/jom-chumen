@@ -27,7 +27,7 @@ function MePage() {
       .catch(() => setProfile({ displayName: "", avatarUrl: "", tags: [] }));
   }, [user?.id]);
 
-  const displayName = profile?.displayName || user?.displayName || "Jom 用户";
+  const displayName = profile?.displayName?.trim() || user?.displayName || "Jom 用户";
   const avatar = profile?.avatarUrl || user?.profileImageUrl || "";
   const tags = profile?.tags ?? [];
 
@@ -87,6 +87,7 @@ function MePage() {
           <ul className="mt-4 overflow-hidden rounded-xl bg-surface shadow-card">
             <Row href="/tickets" icon={Ticket} label="票夹" hint="报名成功的电子票" />
             <Row href="/me/applies" icon={ClipboardList} label="我的申请" hint="待确认 / 已拒绝" />
+            <Row href="/me/host" icon={Search} label="收款与客服" hint="WhatsApp 和收款码" />
             <Row href="/lookup" icon={Search} label="查询报名" hint="用报名号或 WhatsApp" last />
           </ul>
         </>
@@ -103,7 +104,7 @@ function MePage() {
             </>
           ) : (
             <>
-              <p className="font-display text-lg font-semibold">还没有账号</p>
+              <p className="font-display text-lg font-semibold">还沠有账号</p>
               <p className="mt-1 text-sm text-muted">
                 登录后可以改资料、建俱乐部、审核报名。
               </p>
