@@ -33,7 +33,7 @@ function ClubStudioPage() {
     return map;
   }, [inbox]);
 
-  if (isPending) return <PageLoading label="正在进入俱乐部…" />;
+  if (isPending) return <PageLoading label="正在进入俱乐部" />;
   if (!user) {
     return (
       <main className="px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -62,7 +62,7 @@ function ClubStudioPage() {
           <TabsTrigger value="clubs">俱乐部</TabsTrigger>
         </TabsList>
         <TabsContent value="inbox">
-          {inbox === null ? <PageLoading label="拉取申请…" /> : inbox.length === 0 ? (
+          {inbox === null ? <PageLoading label="拉取申请" /> : inbox.length === 0 ? (
             <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card"><p className="font-medium">还沠有待确认的申请</p></div>
           ) : (
             <ul className="space-y-2">
@@ -79,7 +79,7 @@ function ClubStudioPage() {
           )}
         </TabsContent>
         <TabsContent value="events">
-          {events === null ? <PageLoading label="拉取活动…" /> : events.length === 0 ? (
+          {events === null ? <PageLoading label="拉取活动" /> : events.length === 0 ? (
             <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card"><p className="font-medium">还沠有你发起的局</p></div>
           ) : (
             <ul className="space-y-2">
@@ -107,7 +107,7 @@ function ClubStudioPage() {
           )}
         </TabsContent>
         <TabsContent value="clubs">
-          {clubs === null ? <PageLoading label="拉取俱乐部…" /> : clubs.length === 0 ? (
+          {clubs === null ? <PageLoading label="拉取俱乐部" /> : clubs.length === 0 ? (
             <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card">
               <p className="font-medium">还沠有俱乐部</p>
               <Button asChild className="mt-4"><Link to="/me/club">创建一个</Link></Button>

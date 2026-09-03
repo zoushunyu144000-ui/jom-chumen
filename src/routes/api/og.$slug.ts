@@ -12,10 +12,10 @@ export const Route = createFileRoute("/api/og/$slug")({
         if (!event) return new Response("not found", { status: 404 });
         const cover = (await readEventMedia(params.slug, "cover")) || "";
         const headers = {
-          "Cache-Control": "public, max-age=600, s-maxage=600",
+          "Cache-Control": "public, max-age=300, s-maxage=300",
           "Access-Control-Allow-Origin": "*",
         };
-        if (cover.startsWith("data:image/")) {
+        if (cover.startsWith("data:image/") && !cover.startsWith("data:image/svg")) {
           const comma = cover.indexOf(",");
           const meta = cover.slice(0, comma);
           const mime = meta.includes("png") ? "image/png" : meta.includes("webp") ? "image/webp" : "image/jpeg";
@@ -24,51 +24,47 @@ export const Route = createFileRoute("/api/og/$slug")({
           });
         }
         if (cover.startsWith("/covers/") || cover.startsWith("/pay/")) {
+          if (cover.endsWith(".svg")) return brandJpeg(event.title);
           try {
             const file = join(process.cwd(), "public", cover.replace(/^\//, ""));
             const bytes = await readFile(file);
-            const mime = cover.endsWith(".png") ? "image/png" : cover.endsWith(".svg") ? "image/svg+xml" : "image/jpeg";
-            if (mime === "image/svg+xml") return cardPng(event.title, event.price, event.currency);
+            const mime = cover.endsWith(".png") ? "image/png" : "image/jpeg";
             return new Response(bytes, { headers: { ...headers, "Content-Type": mime } });
           } catch {
-            return cardPng(event.title, event.price, event.currency);
+            return brandJpeg(event.title);
           }
         }
         if (cover.startsWith("http")) {
           try {
             const res = await fetch(cover);
-            if (res.ok) {
+            const type = res.headers.get("content-type") || "";
+            if (res.ok && type.includes("image") && !type.includes("svg")) {
               return new Response(Buffer.from(await res.arrayBuffer()), {
-                headers: { ...headers, "Content-Type": res.headers.get("content-type") || "image/jpeg" },
+                headers: { ...headers, "Content-Type": type },
               });
             }
           } catch {
             /* fall through */
           }
         }
-        return cardPng(event.title, event.price, event.currency);
+        return brandJpeg(event.title);
       },
     },
   },
 });
 
-function cardPng(title: string, price: number, currency: string) {
-  const label = `${title.slice(0, 22)} · ${currency} ${price}`;
+function brandJpeg(title: string) {
+  const label = `Jom ${title}`.slice(0, 28);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
     <rect width="1200" height="630" fill="#141511"/>
-    <rect x="0" y="0" width="18" height="630" fill="#c6e14a"/>
-    <text x="72" y="160" fill="#c6e14a" font-size="34" font-family="Arial, sans-serif">Jom 出门局</text>
-    <text x="72" y="320" fill="#ffffff" font-size="52" font-weight="700" font-family="Arial, sans-serif">${escapeXml(label)}</text>
+    <rect width="1200" height="18" fill="#c6e14a"/>
+    <text x="72" y="200" fill="#c6e14a" font-size="40" font-family="Arial">Jom 出门局</text>
+    <text x="72" y="340" fill="#f4f1ea" font-size="48" font-family="Arial">${label.replaceAll("&", "").replaceAll("<", "")}</text>
   </svg>`;
-  return new Response(svg, {
+  return new Response(Buffer.from(svg), {
     headers: {
-      "Content-Type": "image/svg+xml; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
-      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "image/svg+xml",
+      "Cache-Control": "no-store",
     },
   });
-}
-
-function escapeXml(value: string) {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
