@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageLoading } from "@/components/page-loading";
+import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { formatPrice } from "@/lib/format";
 import { createLightRegistration } from "@/lib/server/register";
 import { getPublicEvent } from "@/lib/server/event-public";
@@ -22,9 +25,10 @@ export const Route = createFileRoute("/events/$slug/register")({
 
 function RegisterPage() {
   const { event } = Route.useLoaderData();
+  const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const addApply = useAppStore((s) => s.addApply);
-  const [nickname, setNickname] = useState("");
+  const [nickname, setNickname] = useState(user?.name || "");
   const [wechat, setWechat] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [seats, setSeats] = useState(1);
@@ -32,6 +36,9 @@ function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const total = event.price * seats;
   const closed = !event.open;
+
+  if (isPending) return <PageLoading label="确认登录" />;
+  if (!user) return <RedirectToSignIn />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,8 +71,7 @@ function RegisterPage() {
     <main className="pb-10">
       {submitting ? (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-paper/90">
-          <div className="size-10 animate-spin rounded-full border-2 border-ink border-t-lime" />
-          <p className="mt-3 text-sm font-medium">正在提交报名…</p>
+          <PageLoading label="正在提交报名" />
         </div>
       ) : null}
       <header className="flex items-center gap-1 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
@@ -91,13 +97,9 @@ function RegisterPage() {
         <div>
           <Label>人数</Label>
           <div className="mt-2 flex items-center gap-3">
-            <button type="button" className="flex size-11 items-center justify-center rounded-full bg-surface shadow-card" onClick={() => setSeats((n) => Math.max(1, n - 1))}>
-              <Minus className="size-4" />
-            </button>
+            <button type="button" className="flex size-11 items-center justify-center rounded-full bg-surface shadow-card" onClick={() => setSeats((n) => Math.max(1, n - 1))}><Minus className="size-4" /></button>
             <span className="w-8 text-center font-display text-xl">{seats}</span>
-            <button type="button" className="flex size-11 items-center justify-center rounded-full bg-surface shadow-card" onClick={() => setSeats((n) => Math.min(4, n + 1))}>
-              <Plus className="size-4" />
-            </button>
+            <button type="button" className="flex size-11 items-center justify-center rounded-full bg-surface shadow-card" onClick={() => setSeats((n) => Math.min(4, n + 1))}><Plus className="size-4" /></button>
             <span className="text-sm text-muted">{formatPrice(total, event.currency)}</span>
           </div>
         </div>
@@ -105,25 +107,12 @@ function RegisterPage() {
           <div>
             <Label>支付方式</Label>
             <ul className="mt-2 grid grid-cols-2 gap-2">
-              <li>
-                <button type="button" onClick={() => setMethod("tng")} className={cn("flex h-12 w-full items-center justify-center rounded-lg text-sm font-medium shadow-card", method === "tng" ? "bg-lime" : "bg-surface")}>
-                  TNG
-                </button>
-              </li>
-              <li>
-                <button type="button" onClick={() => setMethod("cash")} className={cn("flex h-12 w-full items-center justify-center rounded-lg text-sm font-medium shadow-card", method === "cash" ? "bg-lime" : "bg-surface")}>
-                  现金
-                </button>
-              </li>
+              <li><button type="button" onClick={() => setMethod("tng")} className={cn("flex h-12 w-full items-center justify-center rounded-lg text-sm font-medium shadow-card", method === "tng" ? "bg-lime" : "bg-surface")}>TNG</button></li>
+              <li><button type="button" onClick={() => setMethod("cash")} className={cn("flex h-12 w-full items-center justify-center rounded-lg text-sm font-medium shadow-card", method === "cash" ? "bg-lime" : "bg-surface")}>现金</button></li>
             </ul>
-            <p className="mt-2 text-xs text-muted">确认报名后才会出 TNG 收款码。现金请按客服指引给。</p>
           </div>
-        ) : (
-          <p className="text-sm text-muted">这场免费，仍需管理员确认。</p>
-        )}
-        <Button type="submit" className="w-full" disabled={submitting || closed}>
-          {closed ? "已停止报名" : submitting ? "提交中…" : "确认报名"}
-        </Button>
+        ) : <p className="text-sm text-muted">这场免费，仍需管理员确认。</p>}
+        <Button type="submit" className="w-full" disabled={submitting || closed}>{closed ? "已停止报名" : submitting ? "提交中…" : "确认报名"}</Button>
       </form>
     </main>
   );
