@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PageLoading } from "@/components/page-loading";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { formatWhen } from "@/lib/format";
 import { getPublicPerson, openUserChat } from "@/lib/server/people";
@@ -22,7 +23,7 @@ function PersonPage() {
     getPublicPerson({ data: { userId: id } }).then(setPerson).catch(() => setPerson(null));
   }, [id]);
 
-  if (!person) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (!person) return <PageLoading label="打开主页" />;
 
   async function message() {
     if (!user) {
