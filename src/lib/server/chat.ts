@@ -27,24 +27,18 @@ async function addMember(chatId: string, userId: string) {
   const sql = await getSql();
   try {
     await sql`insert into chat_members (chat_id, user_id) values (${chatId}, ${userId}) on conflict do nothing`;
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }
 
 async function ensureChat(id: string, title: string, clubId?: string) {
   const sql = await getSql();
   try {
     await sql`insert into chats (id, title) values (${id}, ${title}) on conflict (id) do nothing`;
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
   if (clubId) {
     try {
       await sql`update chats set club_id = ${clubId} where id = ${id} and (club_id is null or club_id = '')`;
-    } catch {
-      /* column may be missing */
-    }
+    } catch { /* ignore */ }
   }
 }
 
@@ -57,9 +51,7 @@ export async function resolveChatId(rawId: string, userId: string) {
     return rawId;
   }
   if (rawId.startsWith("club_")) {
-    const club = await sql<{ id: string; name: string; user_id: string }>`
-      select id, name, user_id from clubs where id = ${rawId} limit 1
-    `;
+    const club = await sql<{ id: string; name: string; user_id: string }>`select id, name, user_id from clubs where id = ${rawId} limit 1`;
     if (!club[0]) throw new Error("俱乐部不存在");
     const id = `chat_${club[0].id}_${userId}`;
     await ensureChat(id, club[0].name || "私信", club[0].id);
@@ -68,9 +60,7 @@ export async function resolveChatId(rawId: string, userId: string) {
     try {
       const admins = await sql<{ user_id: string }>`select user_id from club_members where club_id = ${club[0].id}`;
       for (const admin of admins) await addMember(id, admin.user_id);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     return id;
   }
   const other = await sql<{ id: string; name: string | null }>`select id, name from "user" where id = ${rawId} limit 1`;
@@ -121,23 +111,15 @@ export const listChatMessages = createServerFn({ method: "POST" })
     const chatId = await resolveChatId(data.chatId, context.userId);
     const sql = await getSql();
     const chat = await sql<{ title: string }>`select title from chats where id = ${chatId} limit 1`;
-    const rows = await sql<{
-      id: string; user_id: string; kind: string; body: string; file_name: string; created_at: string | Date;
-    }>`
-      select id, user_id, kind, body, file_name, created_at
-      from chat_messages where chat_id = ${chatId}
-      order by created_at asc limit 200
+    const rows = await sql<{ id: string; user_id: string; kind: string; body: string; file_name: string; created_at: string | Date }>`
+      select id, user_id, kind, body, file_name, created_at from chat_messages where chat_id = ${chatId} order by created_at asc limit 200
     `;
     return {
       id: chatId,
       title: chat[0]?.title || "私信",
       messages: rows.map((row) => ({
-        id: row.id,
-        userId: row.user_id,
-        kind: (row.kind as ChatMessage["kind"]) || "text",
-        body: row.body,
-        fileName: row.file_name || "",
-        mine: row.user_id === context.userId,
+        id: row.id, userId: row.user_id, kind: (row.kind as ChatMessage["kind"]) || "text",
+        body: row.body, fileName: row.file_name || "", mine: row.user_id === context.userId,
         createdAt: new Date(row.created_at).toISOString(),
       })),
     };
@@ -156,11 +138,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const chatId = await resolveChatId(data.chatId, context.userId);
     const sql = await getSql();
-    const id = makeId("cm");
-    await sql`
-      insert into chat_messages (id, chat_id, user_id, kind, body, file_name)
-      values (${id}, ${chatId}, ${context.userId}, ${data.kind}, ${data.body}, ${data.fileName})
+    const recent = await sql<{ user_id: string }>`
+      select user_id from chat_messages where chat_id = ${chatId} order by created_at desc limit 2
     `;
+    if (recent.length === 2 && recent.every((row) => row.user_id === context.userId)) {
+      throw new Error("等对方回一句再发，一次最多连续两条");
+    }
+    const id = makeId("cm");
+    await sql`insert into chat_messages (id, chat_id, user_id, kind, body, file_name) values (${id}, ${chatId}, ${context.userId}, ${data.kind}, ${data.body}, ${data.fileName})`;
     return { id, chatId };
   });
 
