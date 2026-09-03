@@ -96,7 +96,7 @@ function EventDetail() {
           <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-display text-lg font-bold text-lime">{formatPrice(event.price, event.currency)}</span></li>
           <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">已报 {event.booked}/{event.capacity}</span></li>
         </ul>
-        <EventPeople slug={event.slug} booked={event.booked} />
+        <EventPeople slug={event.slug} />
         {hasMap ? <EventMap lat={event.lat as number} lng={event.lng as number} label={event.venue} className="mt-4" /> : null}
         {event.clubId && event.clubName ? (
           <Link to="/clubs/$id" params={{ id: event.clubId }} className="mt-5 flex items-center gap-3">
