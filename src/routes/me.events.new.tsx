@@ -11,6 +11,7 @@ import {
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { createClub, createEvent, listMyClubs } from "@/lib/server/clubs";
+import { saveEventPolicy } from "@/lib/server/event-policy";
 import type { ClubRecord } from "@/lib/types";
 
 export const Route = createFileRoute("/me/events/new")({
@@ -54,12 +55,7 @@ function NewEventPage() {
           return;
         }
         const club = await createClub({
-          data: {
-            name: parsed.newClubName,
-            bio: "",
-            city: parsed.city,
-            coverUrl: parsed.coverUrl,
-          },
+          data: { name: parsed.newClubName, bio: "", city: parsed.city, coverUrl: parsed.coverUrl },
         });
         cid = club.id;
       }
@@ -86,6 +82,14 @@ function NewEventPage() {
           body: parsed.body,
         },
       });
+      await saveEventPolicy({
+        data: {
+          slug: created.slug,
+          refundHours: Number(draft.refundHours) || 24,
+          refundFeePercent: Number(draft.refundFeePercent) || 50,
+          galleryCount: Math.max(0, draft.photos.filter(Boolean).length - 1),
+        },
+      });
       toast.success("活动已发布");
       await navigate({ to: "/events/$slug", params: { slug: created.slug } });
     } catch (err) {
@@ -104,15 +108,7 @@ function NewEventPage() {
         <h1 className="font-display text-lg font-semibold">发起活动</h1>
       </header>
       <div className="px-4">
-        <EventForm
-          clubs={clubs}
-          allowNewClub
-          value={draft}
-          onChange={setDraft}
-          busy={busy}
-          submitLabel="发布活动"
-          onSubmit={(e) => void submit(e)}
-        />
+        <EventForm clubs={clubs} allowNewClub value={draft} onChange={setDraft} busy={busy} submitLabel="发布活动" onSubmit={(e) => void submit(e)} />
       </div>
     </main>
   );
