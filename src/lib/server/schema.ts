@@ -19,6 +19,7 @@ export async function ensureAppSchema() {
   await sql.query(`alter table events add column if not exists refund_fee_percent int default 50`);
   await sql.query(`alter table events add column if not exists gallery_count int default 0`);
   await sql.query(`alter table registrations add column if not exists refund_status text default ''`);
+  await sql.query(`alter table profiles add column if not exists gender text default ''`);
   await sql.query(`
     create table if not exists chats (
       id text primary key,

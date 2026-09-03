@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ImagePlus, Paperclip, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { listChatMessages, sendChatMessage, type ChatMessage } from "@/lib/server/chat";
+import { listChatMessages, openClubChat, sendChatMessage, type ChatMessage } from "@/lib/server/chat";
+import { openUserChat } from "@/lib/server/people";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/chat/$id")({ component: ChatPage });
 
 function ChatPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const [title, setTitle] = useState("私信");
   const [rows, setRows] = useState<ChatMessage[] | null>(null);
@@ -21,15 +23,40 @@ function ChatPage() {
   const [busy, setBusy] = useState(false);
   const end = useRef<HTMLDivElement>(null);
 
-  async function reload() {
-    const data = await listChatMessages({ data: { chatId: id } });
-    setTitle(data.title);
-    setRows(data.messages);
-  }
-
   useEffect(() => {
     if (!user) return;
-    reload().catch(() => setRows([]));
+    let cancelled = false;
+    (async () => {
+      try {
+        let chatId = id;
+        if (id.startsWith("club_")) {
+          const opened = await openClubChat({ data: { clubId: id } });
+          if (cancelled) return;
+          if (opened.id !== id) {
+            await navigate({ to: "/chat/$id", params: { id: opened.id }, replace: true });
+            return;
+          }
+          chatId = opened.id;
+        } else if (!id.startsWith("chat_")) {
+          const opened = await openUserChat({ data: { userId: id } });
+          if (cancelled) return;
+          await navigate({ to: "/chat/$id", params: { id: opened.id }, replace: true });
+          return;
+        }
+        const data = await listChatMessages({ data: { chatId } });
+        if (cancelled) return;
+        setTitle(data.title);
+        setRows(data.messages);
+      } catch (err) {
+        if (!cancelled) {
+          setRows([]);
+          toast.error(err instanceof Error ? err.message : "私信打不开");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user, id]);
 
   useEffect(() => {
@@ -45,7 +72,8 @@ function ChatPage() {
     try {
       await sendChatMessage({ data: { chatId: id, kind, body, fileName } });
       setText("");
-      await reload();
+      const data = await listChatMessages({ data: { chatId: id } });
+      setRows(data.messages);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "发送失败");
     } finally {
@@ -83,6 +111,7 @@ function ChatPage() {
         <h1 className="font-display text-lg font-semibold">{title}</h1>
       </header>
       <div className="flex-1 space-y-2 overflow-y-auto px-4 pb-3">
+        {rows === null ? <p className="pt-8 text-center text-sm text-muted">正在打开私信…</p> : null}
         {(rows ?? []).map((row) => (
           <div key={row.id} className={cn("max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-card", row.mine ? "ml-auto bg-lime" : "bg-surface")}>
             {row.kind === "image" ? (
@@ -96,13 +125,7 @@ function ChatPage() {
         ))}
         <div ref={end} />
       </div>
-      <form
-        className="flex items-center gap-2 border-t border-line px-3 py-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send("text", text);
-        }}
-      >
+      <form className="flex items-center gap-2 border-t border-line px-3 py-2" onSubmit={(e) => { e.preventDefault(); void send("text", text); }}>
         <label className="flex size-10 items-center justify-center rounded-full bg-surface">
           <input type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0], "image")} />
           <ImagePlus className="size-4" />
