@@ -5,7 +5,7 @@ import { getSql } from "@/lib/db";
 import type { ProfileRecord } from "@/lib/types";
 import { digitsOnly } from "@/lib/utils";
 
-export const getProfile = createServerFn({ method: "GET" })
+export const getProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<ProfileRecord> => {
     const sql = await getSql();
@@ -58,9 +58,18 @@ export const saveProfile = createServerFn({ method: "POST" })
         tags = excluded.tags,
         updated_at = now()
     `;
+    const image = data.avatarUrl || null;
+    await sql`
+      update "user"
+      set name = ${data.displayName},
+          image = ${image},
+          "updatedAt" = now()
+      where id = ${context.userId}
+    `;
+    return { displayName: data.displayName, avatarUrl: data.avatarUrl, tags: data.tags };
   });
 
-export const getHostSettings = createServerFn({ method: "GET" })
+export const getHostSettings = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     const sql = await getSql();
@@ -121,4 +130,13 @@ export const saveHostSettings = createServerFn({ method: "POST" })
         alipay_qr = excluded.alipay_qr,
         tng_qr = excluded.tng_qr
     `;
+    await sql`
+      update events set
+        whatsapp = ${whatsapp || "8615571281270"},
+        wechat_qr = ${wechatQr || "/pay/wechat.svg"},
+        alipay_qr = ${alipayQr || "/pay/alipay.svg"},
+        tng_qr = ${tngQr || "/pay/tng.svg"}
+      where user_id = ${context.userId}
+    `;
+    return { whatsapp, wechat_qr: wechatQr, alipay_qr: alipayQr, tng_qr: tngQr };
   });

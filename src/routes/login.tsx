@@ -55,56 +55,24 @@ function Login() {
       if (authError) throw new Error(authError.message || "谷歌登录失败");
       if (data?.url) window.location.href = data.url;
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "谷歌登录还没配好。先用邮箱注册。",
-      );
+      setError(err instanceof Error ? err.message : "谷歌登录失败，先用邮箱");
       setBusy(false);
     }
   }
 
   return (
     <main className="px-5 pb-10 pt-[max(1.5rem,env(safe-area-inset-top))]">
-      <Link
-        to="/"
-        className="font-display text-2xl font-extrabold tracking-tight"
-      >
+      <Link to="/" className="font-display text-2xl font-extrabold tracking-tight">
         Jom
       </Link>
       <h1 className="mt-8 font-display text-3xl font-bold tracking-tight">
         {mode === "in" ? "登录" : "创建账号"}
       </h1>
-      <p className="mt-2 text-sm text-muted">
-        登录后可以建俱乐部、发起活动。
-      </p>
+      <p className="mt-2 text-sm text-muted">登录后可以建俱乐部、发起活动。</p>
 
       {authEnabled ? (
         <>
-          {googleReady ? (
-            <div className="mt-8 space-y-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={busy}
-                onClick={() => void onGoogle()}
-              >
-                使用 Google 继续
-              </Button>
-              <div className="flex items-center gap-3">
-                <Separator className="flex-1" />
-                <span className="text-xs text-muted">或用邮箱</span>
-                <Separator className="flex-1" />
-              </div>
-            </div>
-          ) : (
-            <p className="mt-6 text-xs text-muted">
-              谷歌登录要自己的 Google 应用密钥。没配好之前先用邮箱。
-            </p>
-          )}
-
-          <Tabs value={mode} onValueChange={setMode} className={googleReady ? "mt-4" : "mt-6"}>
+          <Tabs value={mode} onValueChange={setMode} className="mt-8">
             <TabsList className="w-full">
               <TabsTrigger value="in">登录</TabsTrigger>
               <TabsTrigger value="up">注册</TabsTrigger>
@@ -142,9 +110,7 @@ function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    autoComplete={
-                      mode === "up" ? "new-password" : "current-password"
-                    }
+                    autoComplete={mode === "up" ? "new-password" : "current-password"}
                     placeholder="至少 8 位"
                   />
                 </div>
@@ -155,6 +121,25 @@ function Login() {
               </form>
             </TabsContent>
           </Tabs>
+
+          {googleReady ? (
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-xs text-muted">或</span>
+                <Separator className="flex-1" />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={busy}
+                onClick={() => void onGoogle()}
+              >
+                使用 Google 继续
+              </Button>
+            </div>
+          ) : null}
         </>
       ) : (
         <p className="mt-8 text-sm text-muted">登录暂未开启。</p>
