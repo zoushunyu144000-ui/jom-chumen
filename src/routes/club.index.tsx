@@ -5,38 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { listHostEvents, listHostInbox, type InboxRow } from "@/lib/server/admin";
-import { listMyClubs } from "@/lib/server/clubs";
+import { listHostInbox, type InboxRow } from "@/lib/server/admin";
+import { listHostEventCards, listMyClubCards, type HostEventCard } from "@/lib/server/host-lists";
 import { cityName } from "@/lib/catalog";
 import { formatWhen } from "@/lib/format";
-import type { ClubRecord, EventRecord } from "@/lib/types";
 
 export const Route = createFileRoute("/club/")({ component: ClubStudioPage });
 
 function ClubStudioPage() {
   const { user, isPending } = useCurrentUserState();
-  const [clubs, setClubs] = useState<ClubRecord[] | null>(null);
-  const [events, setEvents] = useState<EventRecord[] | null>(null);
+  const [clubs, setClubs] = useState<{ id: string; name: string; city: string; eventCount: number }[] | null>(null);
+  const [events, setEvents] = useState<HostEventCard[] | null>(null);
   const [inbox, setInbox] = useState<InboxRow[] | null>(null);
   const [waited, setWaited] = useState(false);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setWaited(true), 2200);
+    const t = window.setTimeout(() => setWaited(true), 1800);
     return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    listHostInbox()
-      .then((rows) => { if (!cancelled) setInbox(rows); })
-      .catch(() => { if (!cancelled) setInbox([]); });
-    listHostEvents()
-      .then((rows) => { if (!cancelled) setEvents(rows); })
-      .catch(() => { if (!cancelled) setEvents([]); });
-    listMyClubs()
-      .then((rows) => { if (!cancelled) setClubs(rows); })
-      .catch(() => { if (!cancelled) setClubs([]); });
+    listHostInbox().then((rows) => { if (!cancelled) setInbox(rows); }).catch(() => { if (!cancelled) setInbox([]); });
+    listHostEventCards().then((rows) => { if (!cancelled) setEvents(rows); }).catch(() => { if (!cancelled) setEvents([]); });
+    listMyClubCards().then((rows) => { if (!cancelled) setClubs(rows); }).catch(() => { if (!cancelled) setClubs([]); });
     return () => { cancelled = true; };
   }, [user]);
 
@@ -82,12 +75,8 @@ function ClubStudioPage() {
           <TabsTrigger value="clubs">俱乐部</TabsTrigger>
         </TabsList>
         <TabsContent value="inbox">
-          {inbox === null ? (
-            <Skeleton className="mt-2 h-24 rounded-xl" />
-          ) : inbox.length === 0 ? (
-            <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card">
-              <p className="font-medium">沠有待确认的申请</p>
-            </div>
+          {inbox === null ? <Skeleton className="mt-2 h-24 rounded-xl" /> : inbox.length === 0 ? (
+            <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card"><p className="font-medium">沠有待确认的申请</p></div>
           ) : (
             <ul className="space-y-2">
               {inbox.map((row) => (
@@ -137,7 +126,7 @@ function ClubStudioPage() {
               {clubs.map((club) => (
                 <li key={club.id} className="rounded-xl bg-surface p-3 shadow-card">
                   <p className="font-medium">{club.name}</p>
-                  <p className="text-xs text-muted">{cityName(club.city)} · {club.eventCount} 场</p>
+                  <p className="text-xs text-muted">{cityName(club.city as "penang")} · {club.eventCount} 场</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <Button asChild variant="outline" size="sm"><Link to="/clubs/$id" params={{ id: club.id }}>主页</Link></Button>
                     <Button asChild variant="outline" size="sm"><Link to="/club/edit/$id" params={{ id: club.id }}>编辑</Link></Button>
