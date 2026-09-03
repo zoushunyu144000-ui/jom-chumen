@@ -3,12 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CityBar } from "@/components/city-bar";
 import { EventCard } from "@/components/event-card";
 import { CATEGORIES } from "@/lib/catalog";
-import { listEvents } from "@/lib/server/events";
+import { listEventCards } from "@/lib/server/event-cards";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
-  loader: async () => ({ events: await listEvents({ data: {} }) }),
+  loader: async () => ({ events: await listEventCards() }),
+  staleTime: 60_000,
   component: Home,
 });
 
@@ -26,16 +27,13 @@ function Home() {
       if (new Date(event.endsAt).getTime() < Date.now()) return false;
       if (place.world && place.cityName) {
         const hay = `${event.city} ${event.venue} ${event.address}`.toLowerCase();
-        if (!hay.includes(place.cityName.toLowerCase()) && event.city !== place.cityId) {
-          return false;
-        }
+        if (!hay.includes(place.cityName.toLowerCase()) && event.city !== place.cityId) return false;
       } else if (place.cityId !== "all" && event.city !== place.cityId) {
         return false;
       }
       if (category !== "all" && event.category !== category) return false;
       if (!q) return true;
-      const hay = `${event.title} ${event.subtitle} ${event.venue} ${event.hostName}`.toLowerCase();
-      return hay.includes(q);
+      return `${event.title} ${event.subtitle} ${event.venue} ${event.hostName}`.toLowerCase().includes(q);
     });
   }, [events, place, category, query]);
 
@@ -44,15 +42,10 @@ function Home() {
 
   return (
     <main className="pb-6">
-      <CityBar
-        searching={searching}
-        onToggleSearch={() => setSearching((v) => !v)}
-      />
-
+      <CityBar searching={searching} onToggleSearch={() => setSearching((v) => !v)} />
       <section className="px-4 pt-1">
         <p className="text-sm text-muted">东南亚兴趣局，随时出门。</p>
       </section>
-
       <div className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {CATEGORIES.map((item) => (
           <button
@@ -61,32 +54,22 @@ function Home() {
             onClick={() => setCategory(item.id)}
             className={cn(
               "h-9 shrink-0 rounded-full px-3.5 text-sm font-medium transition-colors duration-150",
-              category === item.id
-                ? "bg-ink text-lime"
-                : "bg-surface text-ink-soft shadow-card",
+              category === item.id ? "bg-ink text-lime" : "bg-surface text-ink-soft shadow-card",
             )}
           >
             {item.name}
           </button>
         ))}
       </div>
-
-      <div className="mt-4 px-4">
-        {featured ? <EventCard event={featured} featured /> : null}
-      </div>
-
+      <div className="mt-4 px-4">{featured ? <EventCard event={featured} featured /> : null}</div>
       <section className="mt-6 px-4">
         <div className="mb-3 flex items-end justify-between">
-          <h2 className="font-display text-lg font-semibold tracking-tight">
-            即将开始
-          </h2>
-          <span className="text-xs text-muted tabular-nums">
-            {filtered.length} 场
-          </span>
+          <h2 className="font-display text-lg font-semibold tracking-tight">即将开始</h2>
+          <span className="text-xs text-muted tabular-nums">{filtered.length} 场</span>
         </div>
         {rest.length === 0 && !featured ? (
           <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card">
-            <p className="font-medium">这一带暂时没有局</p>
+            <p className="font-medium">这一带暂时沠有局</p>
             <p className="mt-1 text-sm text-muted">换个城市或分类看看</p>
           </div>
         ) : (
