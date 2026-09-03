@@ -18,44 +18,67 @@ export type Attendee = {
   pending: boolean;
 };
 
-export const listEventAttendees = createServerFn({ method: "GET" })
+export const listEventAttendees = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({ slug: z.string().min(1) }).parse(data))
   .handler(async ({ data }): Promise<Attendee[]> => {
     await ensureAppSchema();
     const sql = await getSql();
-    const rows = await sql<{
-      user_id: string | null;
-      nickname: string;
-      display_name: string | null;
-      user_name: string | null;
-      avatar_url: string | null;
-      user_image: string | null;
-      gender: string | null;
-      payment_status: string;
-    }>`
-      select r.user_id, r.nickname, r.payment_status,
-        p.display_name, u.name as user_name,
-        p.avatar_url, u.image as user_image,
-        coalesce(p.gender, '') as gender
-      from registrations r
-      join events e on e.id = r.event_id
-      left join profiles p on p.user_id = r.user_id
-      left join "user" u on u.id = r.user_id
-      where e.slug = ${data.slug}
-        and r.payment_status in ('approved', 'paid', 'pending')
-      order by case when r.payment_status in ('approved','paid') then 0 else 1 end, r.created_at asc
-      limit 40
-    `;
-    return rows.map((row) => ({
-      userId: row.user_id,
-      name: row.display_name || row.user_name || row.nickname,
-      avatarUrl: shortAvatar(row.avatar_url) || shortAvatar(row.user_image),
-      gender: row.gender || "",
-      pending: row.payment_status === "pending",
-    }));
+    try {
+      const rows = await sql<{
+        user_id: string | null;
+        nickname: string;
+        display_name: string | null;
+        user_name: string | null;
+        avatar_url: string | null;
+        user_image: string | null;
+        gender: string | null;
+        payment_status: string;
+      }>`
+        select r.user_id, r.nickname, r.payment_status,
+          p.display_name, u.name as user_name,
+          p.avatar_url, u.image as user_image,
+          coalesce(p.gender, '') as gender
+        from registrations r
+        join events e on e.id = r.event_id
+        left join profiles p on p.user_id = r.user_id
+        left join "user" u on u.id = r.user_id
+        where e.slug = ${data.slug}
+          and r.payment_status in ('approved', 'paid', 'pending')
+        order by r.created_at asc
+        limit 40
+      `;
+      return rows.map((row) => ({
+        userId: row.user_id,
+        name: row.display_name || row.user_name || row.nickname,
+        avatarUrl: shortAvatar(row.avatar_url) || shortAvatar(row.user_image),
+        gender: row.gender || "",
+        pending: row.payment_status === "pending",
+      }));
+    } catch {
+      const rows = await sql<{
+        user_id: string | null;
+        nickname: string;
+        payment_status: string;
+      }>`
+        select r.user_id, r.nickname, r.payment_status
+        from registrations r
+        join events e on e.id = r.event_id
+        where e.slug = ${data.slug}
+          and r.payment_status in ('approved', 'paid', 'pending')
+        order by r.created_at asc
+        limit 40
+      `;
+      return rows.map((row) => ({
+        userId: row.user_id,
+        name: row.nickname,
+        avatarUrl: "",
+        gender: "",
+        pending: row.payment_status === "pending",
+      }));
+    }
   });
 
-export const getPublicPerson = createServerFn({ method: "GET" })
+export const getPublicPerson = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({ userId: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
     await ensureAppSchema();
@@ -68,7 +91,8 @@ export const getPublicPerson = createServerFn({ method: "GET" })
       user_name: string | null;
       user_image: string | null;
     }>`
-      select p.display_name, p.avatar_url, p.tags, p.gender, u.name as user_name, u.image as user_image
+      select p.display_name, p.avatar_url, p.tags, coalesce(p.gender, '') as gender,
+             u.name as user_name, u.image as user_image
       from "user" u
       left join profiles p on p.user_id = u.id
       where u.id = ${data.userId}
@@ -117,8 +141,7 @@ export const openUserChat = createServerFn({ method: "POST" })
     if (!other[0]) throw new Error("找不到这个人");
     const pair = [context.userId, data.userId].sort();
     const id = `chat_dm_${pair[0]}_${pair[1]}`;
-    const titleRow = await sql<{ display_name: string | null }>`select display_name from profiles where user_id = ${data.userId} limit 1`;
-    const title = titleRow[0]?.display_name || other[0].name || "私信";
+    const title = other[0].name || "私信";
     await sql`insert into chats (id, title) values (${id}, ${title}) on conflict (id) do nothing`;
     await sql`insert into chat_members (chat_id, user_id) values (${id}, ${context.userId}) on conflict do nothing`;
     await sql`insert into chat_members (chat_id, user_id) values (${id}, ${data.userId}) on conflict do nothing`;
