@@ -40,7 +40,6 @@ export const listHostEventCards = createServerFn({ method: "POST" })
         group by event_id
       ) r on r.event_id = e.id
       where e.user_id = ${context.userId}
-         or e.club_id in (select club_id from club_members where user_id = ${context.userId})
       order by e.starts_at desc
     `;
     return rows.map((row) => ({
@@ -61,26 +60,40 @@ export const listMyClubCards = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await ensureAppSchema();
     const sql = await getSql();
-    const rows = await sql<{
-      id: string;
-      name: string;
-      city: string;
-      event_count: number | string | null;
-    }>`
-      select c.id, c.name, c.city, coalesce(e.n, 0) as event_count
-      from clubs c
-      left join (
-        select club_id, count(*)::int as n from events where club_id is not null group by club_id
-      ) e on e.club_id = c.id
-      where c.user_id = ${context.userId}
-         or c.id in (select club_id from club_members where user_id = ${context.userId})
-         or c.id in (select club_id from events where user_id = ${context.userId} and club_id is not null)
-      order by c.name asc
+    await sql`
+      insert into club_members (club_id, user_id, role)
+      select id, user_id, 'owner' from clubs
+      where user_id = ${context.userId}
+      on conflict do nothing
     `;
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      city: row.city,
-      eventCount: Number(row.event_count) || 0,
-    }));
+    const owned = await sql<{ id: string; name: string; city: string | null }>`
+      select id, name, city from clubs where user_id = ${context.userId}
+    `;
+    const member = await sql<{ id: string; name: string; city: string | null }>`
+      select c.id, c.name, c.city
+      from clubs c
+      join club_members m on m.club_id = c.id
+      where m.user_id = ${context.userId}
+    `;
+    const fromEvents = await sql<{ id: string; name: string; city: string | null }>`
+      select c.id, c.name, c.city
+      from clubs c
+      join events e on e.club_id = c.id
+      where e.user_id = ${context.userId}
+    `;
+    const counts = await sql<{ club_id: string; n: number }>`
+      select club_id, count(*)::int as n from events where club_id is not null group by club_id
+    `;
+    const nMap = new Map(counts.map((row) => [row.club_id, Number(row.n) || 0]));
+    const map = new Map<string, { id: string; name: string; city: string; eventCount: number }>();
+    for (const row of [...owned, ...member, ...fromEvents]) {
+      if (!row.id || map.has(row.id)) continue;
+      map.set(row.id, {
+        id: row.id,
+        name: row.name,
+        city: row.city || "penang",
+        eventCount: nMap.get(row.id) ?? 0,
+      });
+    }
+    return [...map.values()];
   });
