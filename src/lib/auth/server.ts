@@ -133,7 +133,7 @@ export const auth = betterAuth({
       requireLocalEmailVerified: false,
     },
   },
-  session: { cookieCache: { enabled: true, maxAge: 300 } },
+  session: { cookieCache: { enabled: false } },
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
   advanced: {
     useSecureCookies: false,
@@ -154,7 +154,11 @@ export const auth = betterAuth({
 });
 
 export function readSessionToken(): string | null {
-  return getCookie(SESSION_TOKEN_COOKIE) ?? null;
+  try {
+    return getCookie(SESSION_TOKEN_COOKIE) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export { GROK_PROVIDERS } from "./providers";
