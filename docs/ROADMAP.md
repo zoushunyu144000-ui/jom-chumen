@@ -1,6 +1,6 @@
 # 任务目标与进度
 
-更新：2026-09-03 晚。活任务以 [GitHub Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues) 为准。做完就关 issue，并改这一页。
+更新：2026-09-03 晚。今日问题对照：[Issue #2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)。登录环境变量：[Issue #1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)。做完就关 issue，并改这一页。
 
 ## 总目标
 

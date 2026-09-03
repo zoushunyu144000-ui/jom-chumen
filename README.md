@@ -53,4 +53,4 @@ npm run dev
 - 产品闭环（发现 → 登录报名 → 人工确认 → 米色纸票）代码已在 `main`
 - 正式站 https://jom-chumen-2026.vercel.app 有 Neon，但仍是额度拦住之前的旧构建；纸票海报还没上到这个域名
 - 登录要环境变量正确；见 [Issue #1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)
-- 今日问题对照：[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/TASKS.md](docs/TASKS.md)
+- 今日问题对照：[Issue #2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)、[docs/ROADMAP.md](docs/ROADMAP.md)、[docs/TASKS.md](docs/TASKS.md)

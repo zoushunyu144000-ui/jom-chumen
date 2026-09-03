@@ -1,6 +1,6 @@
 # 任务看板（GitHub Issue 镜像）
 
-更新：2026-09-03 晚。活任务以 [GitHub Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues) 为准。
+更新：2026-09-03 晚。活任务以 [GitHub Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues) 为准。今日对照：**[#2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)**。登录环境变量：**[#1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)**。
 
 状态：`todo` / `in-progress` / `done` / `blocked`
 
