@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { makeCode, makeId } from "@/lib/utils";
 import { isRealQr } from "@/lib/pay";
+import { makeCode, makeId } from "@/lib/utils";
 
 export const createLightRegistration = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
   .validator((data: unknown) =>
     z.object({
       slug: z.string().min(1),
@@ -15,7 +17,7 @@ export const createLightRegistration = createServerFn({ method: "POST" })
       contactWhatsapp: z.string().trim().min(8).max(24),
     }).parse(data),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
     const rows = await sql<{
       id: string;
@@ -35,6 +37,12 @@ export const createLightRegistration = createServerFn({ method: "POST" })
     if (event.open === false) throw new Error("这场局已停止报名");
     const phone = data.contactWhatsapp.replace(/\D/g, "");
     if (phone.length < 8 || phone.length > 20) throw new Error("请填写有效 WhatsApp");
+    const mine = await sql<{ id: string }>`
+      select id from registrations
+      where event_id = ${event.id} and user_id = ${context.userId}
+        and payment_status in ('pending', 'approved', 'paid')
+      limit 1`;
+    if (mine[0]) throw new Error("你已经报过这场");
     const dup = await sql<{ id: string }>`
       select id from registrations
       where event_id = ${event.id}
@@ -54,13 +62,6 @@ export const createLightRegistration = createServerFn({ method: "POST" })
     const prefix = `HD-${day.replaceAll("-", "")}-`;
     const counted = await sql<{ n: number }>`select count(*)::int as n from registrations where apply_no like ${`${prefix}%`}`;
     const applyNo = `${prefix}${String((counted[0]?.n ?? 0) + 1).padStart(3, "0")}`;
-    let userId: string | null = null;
-    try {
-      const { getSessionUser } = await import("@/lib/auth/verify.server");
-      userId = (await getSessionUser())?.id ?? null;
-    } catch {
-      userId = null;
-    }
     await sql`
       insert into registrations (
         id, event_id, code, apply_no, nickname, phone, seats,
@@ -68,7 +69,7 @@ export const createLightRegistration = createServerFn({ method: "POST" })
         contact_wechat, contact_whatsapp
       ) values (
         ${id}, ${event.id}, ${code}, ${applyNo}, ${data.nickname}, ${phone}, ${data.seats},
-        ${method}, ${"pending"}, ${amount}, ${event.currency}, ${userId},
+        ${method}, ${"pending"}, ${amount}, ${event.currency}, ${context.userId},
         ${data.contactWechat}, ${phone}
       )
     `;
