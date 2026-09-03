@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventBody } from "@/components/event-body";
 import { EventGallery, eventGalleryImages } from "@/components/event-gallery";
+import { EventShareButton } from "@/components/event-share";
 import { GALLERY_CAPTION } from "@/components/event-form";
 import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
 import { formatPrice, formatRange } from "@/lib/format";
+import { eventOgImageUrl, eventShareUrl } from "@/lib/public-url";
 import { getEventBySlug } from "@/lib/server/events";
 
 export const Route = createFileRoute("/events/$slug/")({
@@ -15,6 +17,31 @@ export const Route = createFileRoute("/events/$slug/")({
     const event = await getEventBySlug({ data: { slug: params.slug } });
     if (!event) throw notFound();
     return { event };
+  },
+  head: ({ loaderData }) => {
+    const event = loaderData?.event;
+    if (!event) return {};
+    const url = eventShareUrl(event.slug);
+    const image = eventOgImageUrl(event.slug);
+    const desc = `${formatPrice(event.price, event.currency)} · ${formatRange(event.startsAt, event.endsAt, event.currency)} · ${event.venue}`;
+    return {
+      meta: [
+        { title: `${event.title} · Jom 出门局` },
+        { name: "description", content: desc },
+        { property: "og:type", content: "website" },
+        { property: "og:site_name", content: "Jom 出门局" },
+        { property: "og:title", content: event.title },
+        { property: "og:description", content: desc },
+        { property: "og:url", content: url },
+        { property: "og:image", content: image },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: event.title },
+        { name: "twitter:description", content: desc },
+        { name: "twitter:image", content: image },
+      ],
+    };
   },
   errorComponent: () => (
     <main className="px-6 py-20 text-center">
@@ -51,6 +78,9 @@ function EventDetail() {
         <Link to="/" className="absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-card" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
+        <div className="absolute right-3 top-3 z-10">
+          <EventShareButton event={event} />
+        </div>
         <Badge className="absolute left-3 top-16 z-10">{categoryName(event.category)}</Badge>
       </div>
       <section className="px-4 pt-4">
@@ -90,6 +120,9 @@ function EventDetail() {
             </ul>
           </>
         ) : null}
+        <Button type="button" variant="outline" className="mt-6 w-full" onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="分享活动"]')?.click()}>
+          分享这场活动
+        </Button>
       </section>
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 border-t border-line bg-paper/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div>
