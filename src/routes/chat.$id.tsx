@@ -21,53 +21,52 @@ function ChatPage() {
   const [rows, setRows] = useState<ChatMessage[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [kb, setKb] = useState(0);
+  const [bottom, setBottom] = useState(0);
   const end = useRef<HTMLDivElement>(null);
-  const box = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
     const sync = () => {
-      const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKb(hidden);
-      window.setTimeout(() => end.current?.scrollIntoView({ block: "end" }), 50);
+      if (!vv) {
+        setBottom(0);
+        return;
+      }
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setBottom(inset);
     };
     sync();
-    vv.addEventListener("resize", sync);
-    vv.addEventListener("scroll", sync);
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+    window.addEventListener("focusin", sync);
+    window.addEventListener("focusout", sync);
     return () => {
-      vv.removeEventListener("resize", sync);
-      vv.removeEventListener("scroll", sync);
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      window.removeEventListener("focusin", sync);
+      window.removeEventListener("focusout", sync);
     };
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
     listChatMessages({ data: { chatId: id } })
       .then((data) => {
-        if (cancelled) return;
         setChatId(data.id);
         setTitle(data.title);
         setRows(data.messages);
       })
       .catch((err) => {
-        if (!cancelled) {
-          setRows([]);
-          toast.error(err instanceof Error ? err.message : "私信打不开");
-        }
+        setRows([]);
+        toast.error(err instanceof Error ? err.message : "私信打不开");
       });
-    return () => {
-      cancelled = true;
-    };
   }, [user, id]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [rows, kb]);
+  }, [rows, bottom]);
 
-  if (isPending) return <PageLoading label="打开私信…" />;
+  if (isPending) return <PageLoading label="打开私信" />;
   if (!user) return <RedirectToSignIn />;
 
   async function send(kind: ChatMessage["kind"], body: string, fileName = "") {
@@ -79,6 +78,7 @@ function ChatPage() {
       setText("");
       const data = await listChatMessages({ data: { chatId: sent.chatId } });
       setRows(data.messages);
+      inputRef.current?.focus();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "发送失败");
     } finally {
@@ -108,30 +108,27 @@ function ChatPage() {
   }
 
   return (
-    <main className="flex flex-col bg-paper" style={{ height: kb ? `${window.innerHeight - kb}px` : "100dvh" }}>
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col bg-paper">
       <header className="flex items-center gap-1 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <Link to="/messages" className="flex size-11 items-center justify-center" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="font-display text-lg font-semibold">{title}</h1>
       </header>
-      <div ref={box} className="flex-1 space-y-2 overflow-y-auto px-4 pb-3">
-        {rows === null ? <p className="pt-8 text-center text-sm text-muted">正在打开私信…</p> : null}
+      <div className="flex-1 space-y-2 overflow-y-auto px-4" style={{ paddingBottom: bottom + 72 }}>
+        {rows === null ? <PageLoading label="拉取消息" /> : null}
         {(rows ?? []).map((row) => (
           <div key={row.id} className={cn("max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-card", row.mine ? "ml-auto bg-lime" : "bg-surface")}>
-            {row.kind === "image" ? (
-              <img src={row.body} alt="" className="max-h-48 rounded-md object-cover" />
-            ) : row.kind === "file" ? (
+            {row.kind === "image" ? <img src={row.body} alt="" className="max-h-48 rounded-md object-cover" /> : row.kind === "file" ? (
               <a href={row.body} download={row.fileName} className="underline">{row.fileName || "文件"}</a>
-            ) : (
-              <p className="whitespace-pre-wrap">{row.body}</p>
-            )}
+            ) : <p className="whitespace-pre-wrap">{row.body}</p>}
           </div>
         ))}
         <div ref={end} />
       </div>
       <form
-        className="flex items-center gap-2 border-t border-line bg-paper px-3 py-2"
+        className="fixed inset-x-0 z-40 mx-auto flex w-full max-w-md items-center gap-2 border-t border-line bg-paper px-3 py-2"
+        style={{ bottom }}
         onSubmit={(e) => {
           e.preventDefault();
           void send("text", text);
@@ -145,7 +142,7 @@ function ChatPage() {
           <input type="file" className="hidden" onChange={(e) => void onFile(e.target.files?.[0], "file")} />
           <Paperclip className="size-4" />
         </label>
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="说点什么…" autoComplete="off" />
+        <Input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} placeholder="说点什么…" autoComplete="off" enterKeyHint="send" />
         <Button type="submit" size="sm" disabled={busy || !text.trim()}><Send className="size-4" /></Button>
       </form>
     </main>
