@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ function RegisterPage() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const addApply = useAppStore((s) => s.addApply);
-  const [nickname, setNickname] = useState(user?.name || "");
+  const [nickname, setNickname] = useState(user?.displayName || "");
   const [wechat, setWechat] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [seats, setSeats] = useState(1);
@@ -36,6 +36,10 @@ function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const total = event.price * seats;
   const closed = !event.open;
+
+  useEffect(() => {
+    if (user?.displayName && !nickname.trim()) setNickname(user.displayName);
+  }, [user?.displayName, nickname]);
 
   if (isPending) return <PageLoading label="确认登录" />;
   if (!user) return <RedirectToSignIn />;

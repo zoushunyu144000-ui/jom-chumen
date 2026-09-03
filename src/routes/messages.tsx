@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { PageLoading } from "@/components/page-loading";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { listMessages, markRead } from "@/lib/server/messages";
@@ -21,7 +22,7 @@ function MessagesPage() {
     listMyChats().then(setChats).catch(() => setChats([]));
   }, [user]);
 
-  if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (isPending) return <PageLoading label="打开消息" />;
   if (!user) return <RedirectToSignIn />;
 
   return (
@@ -33,10 +34,10 @@ function MessagesPage() {
       </div>
       {tab === "notice" ? (
         rows === null ? (
-          <p className="mt-6 text-sm text-muted">加载中…</p>
+          <PageLoading label="拉取通知" />
         ) : rows.length === 0 ? (
           <div className="mt-10 rounded-xl bg-surface px-4 py-10 text-center shadow-card">
-            <p className="font-medium">还沠有通知</p>
+            <p className="font-medium">还没有通知</p>
             <p className="mt-1 text-sm text-muted">报名审核结果会放在这里。</p>
           </div>
         ) : (
@@ -55,7 +56,7 @@ function MessagesPage() {
         <p className="mt-6 text-sm text-muted">加载中…</p>
       ) : chats.length === 0 ? (
         <div className="mt-10 rounded-xl bg-surface px-4 py-10 text-center shadow-card">
-          <p className="font-medium">还沠有私信</p>
+          <p className="font-medium">还没有私信</p>
           <p className="mt-1 text-sm text-muted">活动页点「联系主办」就会出现在这里。</p>
         </div>
       ) : (

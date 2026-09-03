@@ -16,6 +16,7 @@ import { Route as LookupRouteImport } from './routes/lookup'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as TicketsRouteImport } from './routes/tickets'
 import { Route as ApplyCodeRouteImport } from './routes/apply.$code'
+import { Route as ChatIdRouteImport } from './routes/chat.$id'
 import { Route as ClubIndexRouteImport } from './routes/club.index'
 import { Route as ClubsIndexRouteImport } from './routes/clubs.index'
 import { Route as ClubsIdRouteImport } from './routes/clubs.$id'
@@ -27,9 +28,13 @@ import { Route as MeClubRouteImport } from './routes/me.club'
 import { Route as MeHostRouteImport } from './routes/me.host'
 import { Route as MeProfileRouteImport } from './routes/me.profile'
 import { Route as TicketCodeRouteImport } from './routes/ticket.$code'
+import { Route as UsersIdRouteImport } from './routes/users.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiMediaSlugRouteImport } from './routes/api/media.$slug'
+import { Route as ApiOgSlugRouteImport } from './routes/api/og.$slug'
 import { Route as ClubEditIdRouteImport } from './routes/club.edit.$id'
 import { Route as ClubEventsEventIdRouteImport } from './routes/club.events.$eventId'
+import { Route as ClubJoinCodeRouteImport } from './routes/club.join.$code'
 import { Route as EventsSlugIndexRouteImport } from './routes/events.$slug.index'
 import { Route as EventsSlugRegisterRouteImport } from './routes/events.$slug.register'
 import { Route as MeEventsNewRouteImport } from './routes/me.events.new'
@@ -67,6 +72,11 @@ const TicketsRoute = TicketsRouteImport.update({
 const ApplyCodeRoute = ApplyCodeRouteImport.update({
   id: '/apply/$code',
   path: '/apply/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatIdRoute = ChatIdRouteImport.update({
+  id: '/chat/$id',
+  path: '/chat/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClubIndexRoute = ClubIndexRouteImport.update({
@@ -124,9 +134,24 @@ const TicketCodeRoute = TicketCodeRouteImport.update({
   path: '/ticket/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsersIdRoute = UsersIdRouteImport.update({
+  id: '/users/$id',
+  path: '/users/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaSlugRoute = ApiMediaSlugRouteImport.update({
+  id: '/api/media/$slug',
+  path: '/api/media/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOgSlugRoute = ApiOgSlugRouteImport.update({
+  id: '/api/og/$slug',
+  path: '/api/og/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClubEditIdRoute = ClubEditIdRouteImport.update({
@@ -137,6 +162,11 @@ const ClubEditIdRoute = ClubEditIdRouteImport.update({
 const ClubEventsEventIdRoute = ClubEventsEventIdRouteImport.update({
   id: '/club/events/$eventId',
   path: '/club/events/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClubJoinCodeRoute = ClubJoinCodeRouteImport.update({
+  id: '/club/join/$code',
+  path: '/club/join/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EventsSlugIndexRoute = EventsSlugIndexRouteImport.update({
@@ -163,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/tickets': typeof TicketsRoute
   '/apply/$code': typeof ApplyCodeRoute
+  '/chat/$id': typeof ChatIdRoute
   '/clubs/$id': typeof ClubsIdRoute
   '/manage/$eventId': typeof ManageEventIdRoute
   '/me/applies': typeof MeAppliesRoute
@@ -170,13 +201,17 @@ export interface FileRoutesByFullPath {
   '/me/host': typeof MeHostRoute
   '/me/profile': typeof MeProfileRoute
   '/ticket/$code': typeof TicketCodeRoute
+  '/users/$id': typeof UsersIdRoute
   '/club/': typeof ClubIndexRoute
   '/clubs/': typeof ClubsIndexRoute
   '/manage/': typeof ManageIndexRoute
   '/me/': typeof MeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/media/$slug': typeof ApiMediaSlugRoute
+  '/api/og/$slug': typeof ApiOgSlugRoute
   '/club/edit/$id': typeof ClubEditIdRoute
   '/club/events/$eventId': typeof ClubEventsEventIdRoute
+  '/club/join/$code': typeof ClubJoinCodeRoute
   '/events/$slug/register': typeof EventsSlugRegisterRoute
   '/me/events/new': typeof MeEventsNewRoute
   '/events/$slug/': typeof EventsSlugIndexRoute
@@ -189,6 +224,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/tickets': typeof TicketsRoute
   '/apply/$code': typeof ApplyCodeRoute
+  '/chat/$id': typeof ChatIdRoute
   '/clubs/$id': typeof ClubsIdRoute
   '/manage/$eventId': typeof ManageEventIdRoute
   '/me/applies': typeof MeAppliesRoute
@@ -196,13 +232,17 @@ export interface FileRoutesByTo {
   '/me/host': typeof MeHostRoute
   '/me/profile': typeof MeProfileRoute
   '/ticket/$code': typeof TicketCodeRoute
+  '/users/$id': typeof UsersIdRoute
   '/club': typeof ClubIndexRoute
   '/clubs': typeof ClubsIndexRoute
   '/manage': typeof ManageIndexRoute
   '/me': typeof MeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/media/$slug': typeof ApiMediaSlugRoute
+  '/api/og/$slug': typeof ApiOgSlugRoute
   '/club/edit/$id': typeof ClubEditIdRoute
   '/club/events/$eventId': typeof ClubEventsEventIdRoute
+  '/club/join/$code': typeof ClubJoinCodeRoute
   '/events/$slug/register': typeof EventsSlugRegisterRoute
   '/me/events/new': typeof MeEventsNewRoute
   '/events/$slug': typeof EventsSlugIndexRoute
@@ -216,6 +256,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/tickets': typeof TicketsRoute
   '/apply/$code': typeof ApplyCodeRoute
+  '/chat/$id': typeof ChatIdRoute
   '/clubs/$id': typeof ClubsIdRoute
   '/manage/$eventId': typeof ManageEventIdRoute
   '/me/applies': typeof MeAppliesRoute
@@ -223,13 +264,17 @@ export interface FileRoutesById {
   '/me/host': typeof MeHostRoute
   '/me/profile': typeof MeProfileRoute
   '/ticket/$code': typeof TicketCodeRoute
+  '/users/$id': typeof UsersIdRoute
   '/club/': typeof ClubIndexRoute
   '/clubs/': typeof ClubsIndexRoute
   '/manage/': typeof ManageIndexRoute
   '/me/': typeof MeIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/media/$slug': typeof ApiMediaSlugRoute
+  '/api/og/$slug': typeof ApiOgSlugRoute
   '/club/edit/$id': typeof ClubEditIdRoute
   '/club/events/$eventId': typeof ClubEventsEventIdRoute
+  '/club/join/$code': typeof ClubJoinCodeRoute
   '/events/$slug/register': typeof EventsSlugRegisterRoute
   '/me/events/new': typeof MeEventsNewRoute
   '/events/$slug/': typeof EventsSlugIndexRoute
@@ -244,6 +289,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/tickets'
     | '/apply/$code'
+    | '/chat/$id'
     | '/clubs/$id'
     | '/manage/$eventId'
     | '/me/applies'
@@ -251,13 +297,17 @@ export interface FileRouteTypes {
     | '/me/host'
     | '/me/profile'
     | '/ticket/$code'
+    | '/users/$id'
     | '/club/'
     | '/clubs/'
     | '/manage/'
     | '/me/'
     | '/api/auth/$'
+    | '/api/media/$slug'
+    | '/api/og/$slug'
     | '/club/edit/$id'
     | '/club/events/$eventId'
+    | '/club/join/$code'
     | '/events/$slug/register'
     | '/me/events/new'
     | '/events/$slug/'
@@ -270,6 +320,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/tickets'
     | '/apply/$code'
+    | '/chat/$id'
     | '/clubs/$id'
     | '/manage/$eventId'
     | '/me/applies'
@@ -277,13 +328,17 @@ export interface FileRouteTypes {
     | '/me/host'
     | '/me/profile'
     | '/ticket/$code'
+    | '/users/$id'
     | '/club'
     | '/clubs'
     | '/manage'
     | '/me'
     | '/api/auth/$'
+    | '/api/media/$slug'
+    | '/api/og/$slug'
     | '/club/edit/$id'
     | '/club/events/$eventId'
+    | '/club/join/$code'
     | '/events/$slug/register'
     | '/me/events/new'
     | '/events/$slug'
@@ -296,6 +351,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/tickets'
     | '/apply/$code'
+    | '/chat/$id'
     | '/clubs/$id'
     | '/manage/$eventId'
     | '/me/applies'
@@ -303,13 +359,17 @@ export interface FileRouteTypes {
     | '/me/host'
     | '/me/profile'
     | '/ticket/$code'
+    | '/users/$id'
     | '/club/'
     | '/clubs/'
     | '/manage/'
     | '/me/'
     | '/api/auth/$'
+    | '/api/media/$slug'
+    | '/api/og/$slug'
     | '/club/edit/$id'
     | '/club/events/$eventId'
+    | '/club/join/$code'
     | '/events/$slug/register'
     | '/me/events/new'
     | '/events/$slug/'
@@ -323,6 +383,7 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   TicketsRoute: typeof TicketsRoute
   ApplyCodeRoute: typeof ApplyCodeRoute
+  ChatIdRoute: typeof ChatIdRoute
   ClubsIdRoute: typeof ClubsIdRoute
   ManageEventIdRoute: typeof ManageEventIdRoute
   MeAppliesRoute: typeof MeAppliesRoute
@@ -330,13 +391,17 @@ export interface RootRouteChildren {
   MeHostRoute: typeof MeHostRoute
   MeProfileRoute: typeof MeProfileRoute
   TicketCodeRoute: typeof TicketCodeRoute
+  UsersIdRoute: typeof UsersIdRoute
   ClubIndexRoute: typeof ClubIndexRoute
   ClubsIndexRoute: typeof ClubsIndexRoute
   ManageIndexRoute: typeof ManageIndexRoute
   MeIndexRoute: typeof MeIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiMediaSlugRoute: typeof ApiMediaSlugRoute
+  ApiOgSlugRoute: typeof ApiOgSlugRoute
   ClubEditIdRoute: typeof ClubEditIdRoute
   ClubEventsEventIdRoute: typeof ClubEventsEventIdRoute
+  ClubJoinCodeRoute: typeof ClubJoinCodeRoute
   EventsSlugRegisterRoute: typeof EventsSlugRegisterRoute
   MeEventsNewRoute: typeof MeEventsNewRoute
   EventsSlugIndexRoute: typeof EventsSlugIndexRoute
@@ -391,6 +456,13 @@ declare module '@tanstack/react-router' {
       path: '/apply/$code'
       fullPath: '/apply/$code'
       preLoaderRoute: typeof ApplyCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/$id': {
+      id: '/chat/$id'
+      path: '/chat/$id'
+      fullPath: '/chat/$id'
+      preLoaderRoute: typeof ChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/club/': {
@@ -470,11 +542,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TicketCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/users/$id': {
+      id: '/users/$id'
+      path: '/users/$id'
+      fullPath: '/users/$id'
+      preLoaderRoute: typeof UsersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$slug': {
+      id: '/api/media/$slug'
+      path: '/api/media/$slug'
+      fullPath: '/api/media/$slug'
+      preLoaderRoute: typeof ApiMediaSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/og/$slug': {
+      id: '/api/og/$slug'
+      path: '/api/og/$slug'
+      fullPath: '/api/og/$slug'
+      preLoaderRoute: typeof ApiOgSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/club/edit/$id': {
@@ -489,6 +582,13 @@ declare module '@tanstack/react-router' {
       path: '/club/events/$eventId'
       fullPath: '/club/events/$eventId'
       preLoaderRoute: typeof ClubEventsEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/club/join/$code': {
+      id: '/club/join/$code'
+      path: '/club/join/$code'
+      fullPath: '/club/join/$code'
+      preLoaderRoute: typeof ClubJoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/events/$slug/': {
@@ -523,6 +623,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   TicketsRoute: TicketsRoute,
   ApplyCodeRoute: ApplyCodeRoute,
+  ChatIdRoute: ChatIdRoute,
   ClubsIdRoute: ClubsIdRoute,
   ManageEventIdRoute: ManageEventIdRoute,
   MeAppliesRoute: MeAppliesRoute,
@@ -530,13 +631,17 @@ const rootRouteChildren: RootRouteChildren = {
   MeHostRoute: MeHostRoute,
   MeProfileRoute: MeProfileRoute,
   TicketCodeRoute: TicketCodeRoute,
+  UsersIdRoute: UsersIdRoute,
   ClubIndexRoute: ClubIndexRoute,
   ClubsIndexRoute: ClubsIndexRoute,
   ManageIndexRoute: ManageIndexRoute,
   MeIndexRoute: MeIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiMediaSlugRoute: ApiMediaSlugRoute,
+  ApiOgSlugRoute: ApiOgSlugRoute,
   ClubEditIdRoute: ClubEditIdRoute,
   ClubEventsEventIdRoute: ClubEventsEventIdRoute,
+  ClubJoinCodeRoute: ClubJoinCodeRoute,
   EventsSlugRegisterRoute: EventsSlugRegisterRoute,
   MeEventsNewRoute: MeEventsNewRoute,
   EventsSlugIndexRoute: EventsSlugIndexRoute,

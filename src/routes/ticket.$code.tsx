@@ -1,8 +1,7 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
-import { TicketShareButton } from "@/components/ticket-share";
-import { TicketView } from "@/components/ticket-view";
+import { ShareableTicket } from "@/components/ticket-share";
 import { Button } from "@/components/ui/button";
 import { applyStatusLabel, isApplySuccess } from "@/lib/format";
 import { getTicketByCode } from "@/lib/server/events";
@@ -32,7 +31,7 @@ function TicketPage() {
         <Link to="/me/applies" className="flex size-11 items-center justify-center" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
-        <p className="font-display text-lg font-semibold">还沠有出票</p>
+        <p className="font-display text-lg font-semibold">还没有出票</p>
         <p className="mt-1 text-sm text-muted">当前状态：{applyStatusLabel(ticket.paymentStatus)}。提交申请不等于报名成功。</p>
         <Button asChild className="mt-5 w-full">
           <Link to="/apply/$code" params={{ code: ticket.code }}>查看申请与付款指引</Link>
@@ -53,10 +52,7 @@ function TicketPage() {
         <Check className="size-4" />
         报名成功，入场出示此票
       </div>
-      <TicketView ticket={ticket} />
-      <div className="mt-3">
-        <TicketShareButton ticket={ticket} />
-      </div>
+      <ShareableTicket ticket={ticket} />
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Button variant="outline" onClick={async () => {
           try {

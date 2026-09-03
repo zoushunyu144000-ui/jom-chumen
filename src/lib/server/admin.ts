@@ -151,7 +151,7 @@ export const listApplications = createServerFn({ method: "POST" })
         )
       limit 1
     `;
-    if (!owned[0]) throw new Error("沠有这场活动");
+    if (!owned[0]) throw new Error("没有这场活动");
     const rows = await sql<{
       id: string; code: string; apply_no: string | null; nickname: string; phone: string;
       contact_wechat: string | null; contact_whatsapp: string | null; seats: number;
@@ -255,6 +255,6 @@ export const setEventOpen = createServerFn({ method: "POST" })
         and (user_id = ${context.userId} or club_id in (select club_id from club_members where user_id = ${context.userId}))
       limit 1
     `;
-    if (!rows[0]) throw new Error("沠有这场活动");
+    if (!rows[0]) throw new Error("没有这场活动");
     await sql`update events set open = ${data.open} where id = ${data.eventId}`;
   });

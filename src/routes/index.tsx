@@ -70,7 +70,7 @@ function Home() {
         </div>
         {rest.length === 0 && !featured ? (
           <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card">
-            <p className="font-medium">这一带暂时沠有局</p>
+            <p className="font-medium">这一带暂时没有局</p>
             <p className="mt-1 text-sm text-muted">换个城市或分类看看</p>
           </div>
         ) : (

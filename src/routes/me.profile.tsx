@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import { CoverPicker } from "@/components/cover-picker";
+import { PageLoading } from "@/components/page-loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +37,7 @@ function ProfilePage() {
       .catch(() => undefined);
   }, [user?.id]);
 
-  if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (isPending) return <PageLoading label="打开资料" />;
   if (!user) return <RedirectToSignIn />;
 
   function addTag(raw?: string) {

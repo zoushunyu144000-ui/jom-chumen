@@ -273,9 +273,8 @@ export function snapshotOgIdentity(cwd = process.cwd()) {
     site.card = "custom";
     site.image = disk;
   } else {
-    // site.json `card=custom` without a file must not bake a 404 /og.jpg URL.
-    if (siteHasCustomCard(site)) delete site.card;
-    if (site.image) delete site.image;
+    // Keep site.json image (e.g. /covers/...) when public/og.jpg is absent.
+    if (siteHasCustomCard(site) && !String(site.image ?? "").trim()) delete site.card;
   }
   if (existsSync(join(cwd, "public/x-banner.jpg"))) {
     site.banner = site.banner || "/x-banner.jpg";
@@ -339,38 +338,41 @@ export function grokOgHeadTags({
   site = {},
   documentTitle = "",
   cwd = process.cwd(),
+  path = "",
 } = {}) {
-  const title = resolveOgTitle(site, appName, host, documentTitle);
-  const publicHost = resolvePublicHost(host);
+  const eventSlug = String(path).match(/^\/events\/([^/?#]+)/)?.[1] || "";
+  const title =
+    eventSlug && documentTitle
+      ? documentTitle.replace(/\s*·\s*Jom.*$/i, "").trim() || documentTitle
+      : resolveOgTitle(site, appName, host, documentTitle);
+  const publicHost = resolvePublicHost(host) || "jom-chumen-2026.vercel.app";
   const tags = [
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta property="og:title" content="${escapeHtml(title)}">`,
   ];
-  const description = String(site.description ?? "").trim();
+  const description = eventSlug
+    ? title
+    : String(site.description ?? "").trim();
   if (description) {
     tags.push(`<meta property="og:description" content="${escapeHtml(description)}">`);
   }
   if (String(site.type ?? "").toLowerCase() === "x:game") {
     tags.push(`<meta property="og:type" content="x:game">`);
   }
-  if (publicHost) {
-    const asset = resolveOgCardAsset(site, cwd);
-    const custom = Boolean(asset);
-    let image = custom
-      ? `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`
-      : `${ogServiceUrl()}/v1/card.png?host=${encodeURIComponent(publicHost)}&title=${encodeURIComponent(title)}`;
-    const color = !custom ? placeholderCardColor(site) : "";
-    if (color) image += `&color=${encodeURIComponent(color)}`;
-    tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
-    tags.push(`<meta property="og:image:width" content="1200">`);
-    tags.push(`<meta property="og:image:height" content="630">`);
-    const banner = String(site.banner ?? "").trim();
-    if (banner) {
-      const bannerUrl = `https://${publicHost}${banner.startsWith("/") ? banner : `/${banner}`}`;
-      tags.push(`<meta property="x:game:image" content="${escapeHtml(bannerUrl)}">`);
-      tags.push(`<meta property="x:game:image:width" content="1200">`);
-      tags.push(`<meta property="x:game:image:height" content="264">`);
-    }
+  const asset = resolveOgCardAsset(site, cwd) || "/covers/deep-talk.jpg";
+  const image = eventSlug
+    ? `https://${publicHost}/api/og/${encodeURIComponent(eventSlug)}?v=7`
+    : `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`;
+  tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
+  tags.push(`<meta property="og:image:width" content="1200">`);
+  tags.push(`<meta property="og:image:height" content="630">`);
+  tags.push(`<meta property="og:image:type" content="image/jpeg">`);
+  const banner = String(site.banner ?? "").trim();
+  if (banner) {
+    const bannerUrl = `https://${publicHost}${banner.startsWith("/") ? banner : `/${banner}`}`;
+    tags.push(`<meta property="x:game:image" content="${escapeHtml(bannerUrl)}">`);
+    tags.push(`<meta property="x:game:image:width" content="1200">`);
+    tags.push(`<meta property="x:game:image:height" content="264">`);
   }
   return tags;
 }
@@ -419,12 +421,13 @@ export function normalizeHeadContext(ctx = {}) {
     host: ctx.host ?? "",
     cwd,
     site,
+    path: ctx.path ?? "",
   };
 }
 
 export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
-  const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
+  const { site, projectId, creator, creatorId, host, cwd, path } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
   const appName = resolveOgTitle(
     site,
@@ -444,7 +447,7 @@ export function injectGrokPwaHead(html, ctx = {}) {
 
   next = insertAfterHeadOpen(
     next,
-    grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    grokOgHeadTags({ host, appName, site, documentTitle, cwd, path }).join(""),
   );
 
   if (!next.includes("/grok-app-builder/extensions.js")) {
@@ -498,6 +501,7 @@ export function createHeadInjector(ctx = {}) {
       host: normalized.host,
       cwd: normalized.cwd,
       site: normalized.site,
+      path: normalized.path,
     });
 
   return {

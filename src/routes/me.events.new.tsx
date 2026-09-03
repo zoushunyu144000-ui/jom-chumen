@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { EventForm, emptyEventDraft, parseEventDraft, type EventDraft } from "@/components/event-form";
+import { PageLoading } from "@/components/page-loading";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { isRealQr, isRealWhatsapp } from "@/lib/pay";
@@ -30,7 +31,7 @@ function NewEventPage() {
       .catch(() => setClubs([]));
   }, [user?.id]);
 
-  if (isPending) return <main className="p-6">加载中…</main>;
+  if (isPending) return <PageLoading label="准备发布" />;
   if (!user) return <RedirectToSignIn />;
 
   async function submit(e: React.FormEvent) {

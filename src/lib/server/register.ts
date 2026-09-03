@@ -53,7 +53,7 @@ export const createLightRegistration = createServerFn({ method: "POST" })
     const amount = Number(event.price) * data.seats;
     let method = amount <= 0 ? "free" : data.paymentMethod;
     if (amount > 0 && method === "tng" && !isRealQr(event.tng_qr) && event.tng_qr !== "yes") {
-      throw new Error("主办还沠有上传 TNG 收款码，请选现金");
+      throw new Error("主办还没有上传 TNG 收款码，请选现金");
     }
     if (amount > 0 && method === "free") throw new Error("请选择支付方式");
     const id = makeId("reg");

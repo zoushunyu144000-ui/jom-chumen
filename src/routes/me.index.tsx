@@ -87,7 +87,7 @@ function MePage() {
             </>
           ) : (
             <>
-              <p className="font-display text-lg font-semibold">还沠有账号</p>
+              <p className="font-display text-lg font-semibold">还没有账号</p>
               <Button asChild className="mt-5"><Link to="/login">登录 / 注册</Link></Button>
             </>
           )}

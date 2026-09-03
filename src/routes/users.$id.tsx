@@ -73,7 +73,7 @@ function PersonPage() {
       ) : null}
       <h2 className="mt-8 font-display text-lg font-semibold">参加过的活动</h2>
       {person.events.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">还沠有公开的报名记录。</p>
+        <p className="mt-3 text-sm text-muted">还没有公开的报名记录。</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {person.events.map((event) => (

@@ -8,13 +8,20 @@ export function TicketView({ ticket }: { ticket: TicketRecord }) {
   const { event } = ticket;
   return (
     <article className="overflow-hidden rounded-xl bg-surface shadow-card">
+      <div className="h-1.5 bg-lime" />
       <img
         src={event.coverUrl}
         alt={event.title}
         className="aspect-2/1 w-full object-cover"
       />
       <div className="p-4">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium tracking-wide text-muted">Jom 出门局</p>
+          <span className="rounded-full bg-lime px-2.5 py-0.5 text-xs font-semibold text-ink">
+            报名成功
+          </span>
+        </div>
+        <p className="mt-2 text-xs font-medium text-muted">
           {categoryName(event.category)} · {cityName(event.city)}
         </p>
         <h2 className="mt-1 font-display text-xl font-bold leading-tight tracking-tight">
@@ -47,10 +54,10 @@ export function TicketView({ ticket }: { ticket: TicketRecord }) {
           <p className="mt-2 text-muted">支付</p>
           <p className="font-medium">{paymentLabel(ticket.paymentMethod)}</p>
           <p className="mt-3 font-mono text-xs tracking-[0.18em] text-ink">
-            {ticket.code}
+            {ticket.applyNo || ticket.code}
           </p>
         </div>
-        <div className="size-28 overflow-hidden rounded-md">
+        <div className="size-28 overflow-hidden rounded-md bg-paper">
           <FakeQr seed={ticket.code} className="size-full" />
         </div>
       </div>

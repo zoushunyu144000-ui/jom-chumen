@@ -51,6 +51,7 @@ function EditEventPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!draft) return;
     const parsed = parseEventDraft(draft);
     if (!parsed.title || !parsed.venue) {
       toast.error("标题和地点都要有");

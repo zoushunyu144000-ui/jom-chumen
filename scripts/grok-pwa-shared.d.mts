@@ -40,6 +40,7 @@ export type GrokHeadContext = {
   host?: string | null;
   cwd?: string;
   site?: OgSite;
+  path?: string;
 };
 
 export declare function readOgSite(cwd?: string): OgSite;
@@ -62,6 +63,7 @@ export declare function grokOgHeadTags(ctx?: {
   site?: OgSite;
   documentTitle?: string;
   cwd?: string;
+  path?: string;
 }): string[];
 export declare function stripShareMetaTags(html: string): string;
 export declare function normalizeHeadContext(ctx?: GrokHeadContext): {
@@ -72,6 +74,7 @@ export declare function normalizeHeadContext(ctx?: GrokHeadContext): {
   host: string;
   cwd: string;
   site: OgSite;
+  path: string;
 };
 export declare function injectGrokPwaHead(html: string, ctx?: GrokHeadContext): string;
 export declare function createHeadInjector(ctx?: GrokHeadContext): {

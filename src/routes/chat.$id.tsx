@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ImagePlus, Send } from "lucide-react";
+import { ArrowLeft, ImagePlus, Send, Smile } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/chat/$id")({ component: ChatPage });
 
+const EMOJIS = ["😊", "😂", "❤️", "👍", "🙏", "🔥", "✨", "🎉", "👋", "💪", "🤔", "😍", "😅", "🙌", "😎", "💯"];
+
 function ChatPage() {
   const { id } = Route.useParams();
   const { user, isPending } = useCurrentUserState();
@@ -23,6 +25,7 @@ function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [bottom, setBottom] = useState(0);
   const [preview, setPreview] = useState("");
+  const [showEmoji, setShowEmoji] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -108,7 +111,7 @@ function ChatPage() {
         </Link>
         <h1 className="truncate font-display text-lg font-semibold">{title}</h1>
       </header>
-      <div className="flex-1 space-y-1.5 overflow-y-auto px-3" style={{ paddingBottom: bottom + 72 }}>
+      <div className="flex-1 space-y-1.5 overflow-y-auto px-3" style={{ paddingBottom: bottom + (showEmoji ? 168 : 88) }}>
         {rows === null ? <PageLoading label="拉取消息" /> : null}
         {(rows ?? []).map((row) => (
           <div key={row.id} className={cn("flex", row.mine ? "justify-end" : "justify-start")}>
@@ -131,9 +134,26 @@ function ChatPage() {
         ))}
         <div ref={end} />
       </div>
-      <form
-        className="fixed inset-x-0 z-40 mx-auto flex w-full max-w-md items-center gap-2 border-t border-line bg-paper px-3 py-2"
+      <div
+        className="fixed inset-x-0 z-40 mx-auto w-full max-w-md border-t border-line bg-paper"
         style={{ bottom }}
+      >
+        {showEmoji ? (
+          <div className="grid grid-cols-8 gap-1 px-3 py-2">
+            {EMOJIS.map((emo) => (
+              <button
+                key={emo}
+                type="button"
+                className="flex size-9 items-center justify-center text-xl"
+                onClick={() => setText((t) => t + emo)}
+              >
+                {emo}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      <form
+        className="flex items-center gap-2 px-3 py-2"
         onSubmit={(e) => {
           e.preventDefault();
           void send("text", text);
@@ -143,9 +163,13 @@ function ChatPage() {
           <input type="file" accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
           <ImagePlus className="size-4" />
         </label>
+        <button type="button" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface" onClick={() => setShowEmoji((v) => !v)} aria-label="表情">
+          <Smile className="size-4" />
+        </button>
         <Input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} placeholder="说点什么…" autoComplete="off" enterKeyHint="send" />
         <Button type="submit" size="sm" disabled={busy || !text.trim()}><Send className="size-4" /></Button>
       </form>
+      </div>
       {preview ? (
         <button type="button" className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4" onClick={() => setPreview("")}>
           <img src={preview} alt="" className="max-h-[88dvh] max-w-full rounded-lg object-contain" />

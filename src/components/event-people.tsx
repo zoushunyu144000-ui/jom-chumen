@@ -40,7 +40,7 @@ export function EventPeople({ slug }: { slug: string }) {
         {pending ? ` · 预报名 ${pending}` : ""}
       </p>
       {people.length === 0 ? (
-        <p className="mt-1 text-xs text-muted">还沠有人报名</p>
+        <p className="mt-1 text-xs text-muted">还没有人报名</p>
       ) : (
         <div className="mt-2 flex flex-wrap gap-2">
           {people.slice(0, 12).map((person, i) => (
@@ -66,7 +66,7 @@ export function EventPeople({ slug }: { slug: string }) {
                 进入主页
               </button>
             ) : (
-              <p className="mt-4 text-sm text-muted">这位报名时沠有登录账号。</p>
+              <p className="mt-4 text-sm text-muted">这位报名时没有登录账号。</p>
             )}
             <button type="button" className="mt-2 h-11 w-full text-sm text-muted" onClick={() => setOpen(null)}>关闭</button>
           </div>

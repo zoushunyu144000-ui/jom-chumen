@@ -158,7 +158,7 @@ export const clubInviteInfo = createServerFn({ method: "POST" })
     const club = await sql<{ id: string; name: string; user_id: string; invite_code: string | null }>`
       select id, name, user_id, invite_code from clubs where id = ${data.clubId} limit 1
     `;
-    if (!club[0]) throw new Error("沠有这个俱乐部");
+    if (!club[0]) throw new Error("没有这个俱乐部");
     const allowed =
       club[0].user_id === context.userId ||
       Boolean((await sql<{ user_id: string }>`select user_id from club_members where club_id = ${data.clubId} and user_id = ${context.userId} limit 1`)[0]);

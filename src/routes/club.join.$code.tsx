@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PageLoading } from "@/components/page-loading";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { joinClubByCode } from "@/lib/server/chat";
@@ -13,7 +14,7 @@ function JoinPage() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (isPending) return <PageLoading label="加入俱乐部" />;
   if (!user) return <RedirectToSignIn />;
   async function join() {
     setBusy(true);

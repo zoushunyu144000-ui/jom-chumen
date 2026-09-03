@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import { parseBodySafe } from "@/lib/server/event-media-parse";
 import { GALLERY_CAPTION } from "@/components/event-form";
+import type { BodyBlock } from "@/lib/types";
 
 export async function readEventMedia(slug: string, kind: string, n = 0) {
   const sql = await getSql();
@@ -14,7 +15,9 @@ export async function readEventMedia(slug: string, kind: string, n = 0) {
     return rows[0]?.src || null;
   }
   const rows = await sql.query<{ body: string | null }>(`select body from events where slug = $1 limit 1`, [slug]);
-  const imgs = parseBodySafe(rows[0]?.body).filter((b) => b.type === "img" && b.src);
+  const imgs = parseBodySafe(rows[0]?.body).filter(
+    (b): b is Extract<BodyBlock, { type: "img" }> => b.type === "img" && Boolean(b.src),
+  );
   if (kind === "gallery") return imgs.filter((b) => b.caption === GALLERY_CAPTION)[n]?.src ?? null;
   if (kind === "bodyimg") return imgs.filter((b) => b.caption !== GALLERY_CAPTION)[n]?.src ?? null;
   return imgs[n]?.src ?? null;

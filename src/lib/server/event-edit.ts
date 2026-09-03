@@ -78,7 +78,7 @@ export const saveEventEdits = createServerFn({ method: "POST" })
         and (e.user_id = ${context.userId} or e.club_id in (select club_id from club_members where user_id = ${context.userId}))
       limit 1
     `;
-    if (!owned[0]) throw new Error("沠有这场活动");
+    if (!owned[0]) throw new Error("没有这场活动");
     if (data.capacity < owned[0].booked) throw new Error(`人数上限不能小于已录取的 ${owned[0].booked} 人`);
     const starts = new Date(data.startsAt);
     const ends = new Date(data.endsAt);

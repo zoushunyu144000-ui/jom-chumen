@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { PageLoading } from "@/components/page-loading";
-import { TicketShareButton } from "@/components/ticket-share";
-import { TicketView } from "@/components/ticket-view";
+import { ShareableTicket } from "@/components/ticket-share";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { listMyTickets } from "@/lib/server/ticket-list";
@@ -36,7 +35,7 @@ function TicketsPage() {
         <PageLoading label="正在打开票夹" />
       ) : tickets.length === 0 ? (
         <div className="mt-10 rounded-xl bg-surface px-5 py-12 text-center shadow-card">
-          <p className="font-display text-lg font-semibold">还沠有票</p>
+          <p className="font-display text-lg font-semibold">还没有票</p>
           <p className="mt-1 text-sm text-muted">提交申请并等发起人同意后，票会留在这里。</p>
           <div className="mt-5 grid grid-cols-2 gap-2">
             <Button asChild variant="outline"><Link to="/me/applies">我的申请</Link></Button>
@@ -44,14 +43,9 @@ function TicketsPage() {
           </div>
         </div>
       ) : (
-        <div className="mt-5 space-y-5">
+        <div className="mt-5 space-y-6">
           {tickets.map((ticket) => (
-            <div key={ticket.code} className="space-y-2">
-              <Link to="/ticket/$code" params={{ code: ticket.code }} className="block">
-                <TicketView ticket={ticket} />
-              </Link>
-              <TicketShareButton ticket={ticket} />
-            </div>
+            <ShareableTicket key={ticket.code} ticket={ticket} />
           ))}
         </div>
       )}

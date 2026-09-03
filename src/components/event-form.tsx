@@ -103,21 +103,22 @@ export function EventForm({
   const set = (patch: Partial<EventDraft>) => onChange({ ...value, ...patch });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div>
+    <form onSubmit={onSubmit} className="space-y-6">
+      <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
+        <p className="text-xs font-semibold tracking-wide text-muted">1 · 照片</p>
         <Label>封面和滑动图</Label>
-        <p className="mt-1 text-xs text-muted">可一次多选。第一张是封面，后面的图在活动页左右滑，不会跑进下面文案。</p>
-        <div className="mt-2">
-          <PhotoStrip photos={value.photos} onChange={(photos) => set({ photos, coverUrl: photos[0] ?? "" })} />
-        </div>
-      </div>
+        <p className="text-xs text-muted">可一次多选。第一张是封面，后面的图在活动页左右滑，不会跑进下面文案。</p>
+        <PhotoStrip photos={value.photos} onChange={(photos) => set({ photos, coverUrl: photos[0] ?? "" })} />
+      </section>
 
-      <p className="rounded-lg bg-surface px-3 py-2 text-sm text-muted">
-        报名要扫你的收款码、加 WhatsApp。在
+      <p className="rounded-lg bg-lime/30 px-3 py-2 text-sm">
+        报名要扫你的 TNG 收款码、加 WhatsApp。在
         <Link to="/me/host" className="mx-1 underline">收款与客服</Link>
-        里设。
+        里设好再发。
       </p>
 
+      <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
+        <p className="text-xs font-semibold tracking-wide text-muted">2 · 基本信息</p>
       {clubs.length > 0 ? (
         <div className="space-y-1.5">
           <Label>俱乐部</Label>
@@ -130,7 +131,7 @@ export function EventForm({
       ) : allowNewClub ? (
         <div className="space-y-1.5">
           <Label htmlFor="new-club">新俱乐部名称</Label>
-          <Input id="new-club" value={value.newClubName} onChange={(e) => set({ newClubName: e.target.value })} placeholder="沠有俱乐部的话，这里会一起建" />
+          <Input id="new-club" value={value.newClubName} onChange={(e) => set({ newClubName: e.target.value })} placeholder="没有俱乐部的话，这里会一起建" />
         </div>
       ) : (
         <p className="text-sm text-muted">先创建俱乐部再编辑活动。</p>
@@ -143,7 +144,11 @@ export function EventForm({
       <div className="space-y-1.5">
         <Label htmlFor="subtitle">一句话介绍</Label>
         <Input id="subtitle" value={value.subtitle} onChange={(e) => set({ subtitle: e.target.value })} placeholder="出现在标题下面" maxLength={60} />
-      </div>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
+        <p className="text-xs font-semibold tracking-wide text-muted">3 · 时间地点</p>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1.5">
@@ -178,7 +183,11 @@ export function EventForm({
           <Label>结束</Label>
           <Input type="datetime-local" value={value.endsAt} onChange={(e) => set({ endsAt: e.target.value })} required />
         </div>
-      </div>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
+        <p className="text-xs font-semibold tracking-wide text-muted">4 · 费用与退款</p>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1.5">
@@ -213,17 +222,23 @@ export function EventForm({
         </div>
       </div>
       <p className="text-xs text-muted">例如提前 24 小时申请退款免手续费；不够 24 小时则扣 50%。</p>
+      </section>
 
-      <div>
-        <Label>活动简介（文案）</Label>
-        <p className="mb-2 mt-1 text-xs text-muted">这里的插图只出现在下方文案里，不和封面滑动混在一起。</p>
+      <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
+        <p className="text-xs font-semibold tracking-wide text-muted">5 · 活动简介</p>
+        <Label>正文</Label>
+        <p className="text-xs text-muted">可从 ChatGPT 整段粘贴。标题、段落、列表会自动拆开。点「在这段下面插图」把图插进文字。</p>
         <BlockEditor value={value.body} onChange={(body) => set({ body })} />
-      </div>
+      </section>
+
+      <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
+        <p className="text-xs font-semibold tracking-wide text-muted">6 · 活动提醒</p>
 
       <div className="space-y-1.5">
         <Label>活动提醒（每行一条）</Label>
         <Textarea value={value.highlights} onChange={(e) => set({ highlights: e.target.value })} rows={3} placeholder={"请穿运动鞋\n自备水杯"} />
       </div>
+      </section>
 
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "保存中…" : submitLabel}
