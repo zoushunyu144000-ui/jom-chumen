@@ -1,4 +1,5 @@
-import { CoverPicker } from "@/components/cover-picker";
+import { PhotoStrip } from "@/components/photo-strip";
+import { BlockEditor } from "@/components/block-editor";
 import { PlacePicker } from "@/components/place-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { CATEGORIES, EVENT_CITIES } from "@/lib/catalog";
 import type { BodyBlock, CategoryId, CityId, ClubRecord } from "@/lib/types";
 import { Link } from "@tanstack/react-router";
 
-const MAX_EXTRA = 5;
+export const GALLERY_CAPTION = "__gallery__";
 
 export type EventDraft = {
   clubId: string;
@@ -97,44 +98,15 @@ export function EventForm({
   const eventCategories = CATEGORIES.filter((c) => c.id !== "all");
   const set = (patch: Partial<EventDraft>) => onChange({ ...value, ...patch });
 
-  function setPhoto(i: number, src: string) {
-    const photos = [...value.photos];
-    photos[i] = src;
-    set({ photos: photos.filter(Boolean).slice(0, MAX_EXTRA) });
-  }
-
-  function addPhotoSlot(src: string) {
-    if (!src || value.photos.length >= MAX_EXTRA) return;
-    set({ photos: [...value.photos, src] });
-  }
-
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label>封面（首图）</Label>
-        <p className="mb-2 mt-1 text-xs text-muted">这张会出现在发现列表和详情第一屏。</p>
-        <CoverPicker value={value.coverUrl} onChange={(coverUrl) => set({ coverUrl })} label="上传封面" />
-      </div>
-
-      <div>
-        <Label>更多图片（可选，最多 {MAX_EXTRA} 张）</Label>
-        <p className="mb-2 mt-1 text-xs text-muted">详情页可以左右滑动查看。</p>
-        <div className="grid grid-cols-3 gap-2">
-          {value.photos.map((src, i) => (
-            <div key={`${i}-${src.slice(0, 12)}`} className="relative">
-              <CoverPicker value={src} onChange={(next) => setPhoto(i, next)} label="换图" />
-              <button
-                type="button"
-                className="absolute right-1 top-1 rounded-full bg-ink/80 px-2 py-0.5 text-[10px] text-lime"
-                onClick={() => set({ photos: value.photos.filter((_, j) => j !== i) })}
-              >
-                删
-              </button>
-            </div>
-          ))}
-          {value.photos.length < MAX_EXTRA ? (
-            <CoverPicker value="" onChange={addPhotoSlot} label="加图" />
-          ) : null}
+        <Label>活动图片</Label>
+        <div className="mt-2">
+          <PhotoStrip
+            photos={value.photos}
+            onChange={(photos) => set({ photos, coverUrl: photos[0] ?? "" })}
+          />
         </div>
       </div>
 
@@ -171,65 +143,35 @@ export function EventForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="title">活动标题</Label>
-        <Input
-          id="title"
-          value={value.title}
-          onChange={(e) => set({ title: e.target.value })}
-          placeholder="比如 周日飞盘局"
-          maxLength={40}
-          required
-        />
+        <Input id="title" value={value.title} onChange={(e) => set({ title: e.target.value })} placeholder="比如 周日飞盘局" maxLength={40} required />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="subtitle">一句话介绍</Label>
-        <Input
-          id="subtitle"
-          value={value.subtitle}
-          onChange={(e) => set({ subtitle: e.target.value })}
-          placeholder="出现在标题下面"
-          maxLength={60}
-        />
+        <Input id="subtitle" value={value.subtitle} onChange={(e) => set({ subtitle: e.target.value })} placeholder="出现在标题下面" maxLength={60} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1.5">
           <Label>分类</Label>
-          <NativeSelect
-            value={value.category}
-            onChange={(e) => set({ category: e.target.value as Exclude<CategoryId, "all"> })}
-          >
+          <NativeSelect value={value.category} onChange={(e) => set({ category: e.target.value as Exclude<CategoryId, "all"> })}>
             {eventCategories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
+              <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </NativeSelect>
         </div>
         <div className="space-y-1.5">
           <Label>城市</Label>
-          <NativeSelect
-            value={value.city}
-            onChange={(e) => set({ city: e.target.value as Exclude<CityId, "all"> })}
-          >
+          <NativeSelect value={value.city} onChange={(e) => set({ city: e.target.value as Exclude<CityId, "all"> })}>
             {EVENT_CITIES.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
+              <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </NativeSelect>
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="venue">地点</Label>
-        <PlacePicker
-          venue={value.venue}
-          address={value.address}
-          lat={value.lat}
-          lng={value.lng}
-          city={value.city}
-          onChange={(place) => set(place)}
-        />
+        <Label>地点</Label>
+        <PlacePicker venue={value.venue} address={value.address} lat={value.lat} lng={value.lng} city={value.city} onChange={(place) => set(place)} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -254,24 +196,15 @@ export function EventForm({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="desc">活动简介</Label>
-        <Textarea
-          id="desc"
-          value={value.description}
-          onChange={(e) => set({ description: e.target.value })}
-          rows={5}
-          placeholder="这场怎么玩、适合谁来、怎么流程"
-        />
+      <div>
+        <Label>活动简介</Label>
+        <p className="mb-2 mt-1 text-xs text-muted">可以插入正文、小标题和图片。</p>
+        <BlockEditor value={value.body} onChange={(body) => set({ body })} />
       </div>
+
       <div className="space-y-1.5">
         <Label>活动提醒（每行一条）</Label>
-        <Textarea
-          value={value.highlights}
-          onChange={(e) => set({ highlights: e.target.value })}
-          rows={3}
-          placeholder={"请穿运动鞋\n自备水杯"}
-        />
+        <Textarea value={value.highlights} onChange={(e) => set({ highlights: e.target.value })} rows={3} placeholder={"请穿运动鞋\n自备水杯"} />
       </div>
 
       <Button type="submit" className="w-full" disabled={busy}>
@@ -301,18 +234,14 @@ export function draftFromEvent(event: {
   description?: string;
   body: BodyBlock[];
 }): EventDraft {
-  const photos = event.body
-    .filter((block): block is Extract<BodyBlock, { type: "img" }> => block.type === "img" && Boolean(block.src))
-    .map((block) => block.src)
-    .filter((src) => src !== event.coverUrl)
-    .slice(0, MAX_EXTRA);
-  const description =
-    event.description?.trim() ||
-    event.body
-      .filter((block): block is Extract<BodyBlock, { type: "p" }> => block.type === "p")
-      .map((block) => block.text.trim())
-      .filter(Boolean)
-      .join("\n\n");
+  const gallery = event.body.filter(
+    (block): block is Extract<BodyBlock, { type: "img" }> =>
+      block.type === "img" && block.caption === GALLERY_CAPTION && Boolean(block.src),
+  );
+  const photos = [event.coverUrl, ...gallery.map((b) => b.src)].filter(
+    (src, i, arr) => src && arr.indexOf(src) === i,
+  );
+  const body = event.body.filter((block) => !(block.type === "img" && block.caption === GALLERY_CAPTION));
   return {
     clubId: event.clubId ?? "",
     newClubName: "",
@@ -328,22 +257,31 @@ export function draftFromEvent(event: {
     endsAt: toLocalInput(new Date(event.endsAt)),
     price: String(event.price),
     capacity: String(event.capacity),
-    coverUrl: event.coverUrl,
+    coverUrl: photos[0] ?? event.coverUrl,
     photos,
-    description,
+    description: event.description ?? "",
     hostNote: "",
     highlights: event.highlights.join("\n"),
-    body: event.body.length ? event.body : [{ type: "p", text: "" }],
+    body: body.length ? body : [{ type: "p", text: event.description ?? "" }],
   };
 }
 
 export function parseEventDraft(value: EventDraft) {
-  const description = value.description.trim();
-  const photos = value.photos.filter(Boolean).slice(0, MAX_EXTRA);
-  const body: BodyBlock[] = [
-    ...photos.map((src) => ({ type: "img" as const, src, caption: "" })),
-    ...(description ? [{ type: "p" as const, text: description }] : []),
-  ];
+  const photos = value.photos.filter(Boolean);
+  const coverUrl = photos[0] ?? value.coverUrl;
+  const galleryBlocks: BodyBlock[] = photos.slice(1).map((src) => ({
+    type: "img",
+    src,
+    caption: GALLERY_CAPTION,
+  }));
+  const content = value.body.filter((block) => {
+    if (block.type === "img") return block.src && block.caption !== GALLERY_CAPTION;
+    if (block.type === "ul") return block.items.some((item) => item.trim());
+    return Boolean((block as { text?: string }).text?.trim());
+  });
+  const body = [...galleryBlocks, ...content];
+  const description =
+    content.find((block): block is Extract<BodyBlock, { type: "p" }> => block.type === "p")?.text ?? "";
   return {
     clubId: value.clubId,
     newClubName: value.newClubName.trim(),
@@ -359,13 +297,9 @@ export function parseEventDraft(value: EventDraft) {
     endsAt: new Date(value.endsAt).toISOString(),
     price: Number(value.price) || 0,
     capacity: Number(value.capacity) || 12,
-    coverUrl: value.coverUrl,
+    coverUrl,
     hostNote: "",
-    highlights: value.highlights
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 8),
+    highlights: value.highlights.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 8),
     level: "all" as const,
     body,
     description,
