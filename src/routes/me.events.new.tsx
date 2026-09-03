@@ -2,21 +2,16 @@ import { useEffect, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import {
-  EventForm,
-  emptyEventDraft,
-  parseEventDraft,
-  type EventDraft,
-} from "@/components/event-form";
+import { EventForm, emptyEventDraft, parseEventDraft, type EventDraft } from "@/components/event-form";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { isRealQr, isRealWhatsapp } from "@/lib/pay";
 import { createClub, createEvent, listMyClubs } from "@/lib/server/clubs";
 import { saveEventPolicy } from "@/lib/server/event-policy";
+import { getHostSettings } from "@/lib/server/profile";
 import type { ClubRecord } from "@/lib/types";
 
-export const Route = createFileRoute("/me/events/new")({
-  component: NewEventPage,
-});
+export const Route = createFileRoute("/me/events/new")({ component: NewEventPage });
 
 function NewEventPage() {
   const { user, isPending } = useCurrentUserState();
@@ -43,6 +38,12 @@ function NewEventPage() {
     const parsed = parseEventDraft(draft);
     if (!parsed.title || !parsed.venue || !parsed.coverUrl) {
       toast.error("标题、地点和封面都要有");
+      return;
+    }
+    const host = await getHostSettings().catch(() => null);
+    if (!host || !isRealWhatsapp(host.whatsapp) || !isRealQr(host.tng_qr)) {
+      toast.error("发布前先去填客服 WhatsApp 和 TNG 收款码");
+      await navigate({ to: "/me/host" });
       return;
     }
     setBusy(true);
