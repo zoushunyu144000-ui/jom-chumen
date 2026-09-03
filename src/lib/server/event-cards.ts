@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "@/lib/db";
 import { ensureSeeded, mapEvent, type EventRow } from "@/lib/server/events";
+import { ensureAppSchema } from "@/lib/server/schema";
 import type { EventRecord } from "@/lib/types";
 
 let seeded = false;
 async function seedOnce() {
   if (seeded) return;
+  await ensureAppSchema();
   await ensureSeeded();
   seeded = true;
 }
@@ -14,10 +16,7 @@ const cardSelect = `
   select
     e.id, e.slug, e.title, e.subtitle, e.category, e.city, e.venue, e.address,
     e.starts_at, e.ends_at, e.currency, e.price, e.capacity, e.sold,
-    case
-      when char_length(coalesce(e.cover_url, '')) < 16000 then e.cover_url
-      else ''
-    end as cover_url,
+    '' as cover_url,
     left(coalesce(e.description, ''), 120) as description,
     '[]' as highlights,
     e.host_name, e.host_note, e.level, e.club_id, e.user_id, e.open,
@@ -42,6 +41,7 @@ export const listEventCards = createServerFn({ method: "GET" }).handler(
       const event = mapEvent(row);
       return {
         ...event,
+        coverUrl: `/api/media/${event.slug}?kind=cover`,
         body: [],
         wechatQr: "",
         alipayQr: "",
