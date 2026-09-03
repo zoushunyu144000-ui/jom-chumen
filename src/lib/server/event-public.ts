@@ -1,27 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getEventBySlug } from "@/lib/server/events";
-import { rewriteEventMedia } from "@/lib/server/event-media-parse";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { getSql } from "@/lib/db";
+import { loadEventMetaBySlug } from "@/lib/server/event-meta";
 
 export const getPublicEvent = createServerFn({ method: "GET" })
   .validator((data: unknown) => z.object({ slug: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
-    const event = await getEventBySlug({ data });
+    const event = await loadEventMetaBySlug(data.slug);
     if (!event) return null;
-    const slim = rewriteEventMedia({
-      ...event,
-      wechatQr: event.wechatQr?.startsWith("data:")
-        ? `/api/media/${event.slug}?kind=wechat`
-        : event.wechatQr,
-      alipayQr: event.alipayQr?.startsWith("data:")
-        ? `/api/media/${event.slug}?kind=alipay`
-        : event.alipayQr,
-      tngQr: event.tngQr?.startsWith("data:")
-        ? `/api/media/${event.slug}?kind=tng`
-        : event.tngQr,
-    });
     let myApply: { status: string; code: string } | null = null;
     try {
       const user = await getSessionUser();
@@ -38,5 +25,5 @@ export const getPublicEvent = createServerFn({ method: "GET" })
     } catch {
       myApply = null;
     }
-    return { ...slim, myApply };
+    return { ...event, myApply };
   });
