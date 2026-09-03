@@ -30,9 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/club/edit");
 
   const clubActive =
-    pathname === "/club" ||
-    pathname === "/club/" ||
-    pathname.startsWith("/club/");
+    pathname === "/club" || pathname === "/club/" || pathname.startsWith("/club/");
 
   useEffect(() => {
     rehydrateAppStore();
@@ -44,13 +42,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       setPending(0);
       return;
     }
-    unreadCount()
-      .then(setUnread)
-      .catch(() => setUnread(0));
-    pendingHostCount()
-      .then(setPending)
-      .catch(() => setPending(0));
-  }, [user, pathname]);
+    unreadCount().then(setUnread).catch(() => setUnread(0));
+    pendingHostCount().then(setPending).catch(() => setPending(0));
+  }, [user?.id]);
 
   return (
     <div className="min-h-dvh overflow-x-hidden bg-paper text-ink">
@@ -60,47 +54,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="fixed inset-x-0 bottom-0 z-40">
             <div className="relative mx-auto grid max-w-md grid-cols-5 border-t border-line bg-paper pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
               <Tab to="/" label="发现" icon={Compass} active={pathname === "/"} />
-              <Tab
-                to="/club"
-                label="俱乐部"
-                icon={Users}
-                active={clubActive}
-                badge={pending}
-              />
-              <Link
-                to="/me/events/new"
-                aria-label="发布活动"
-                className="relative flex flex-col items-center"
-              >
+              <Tab to="/club" label="俱乐部" icon={Users} active={clubActive} badge={pending} />
+              <Link to="/me/events/new" preload={false} aria-label="发布活动" className="relative flex flex-col items-center">
                 <span className="-mt-7 flex size-14 items-center justify-center rounded-full bg-lime text-ink shadow-card">
                   <Plus className="size-7" strokeWidth={2.5} />
                 </span>
                 <span className="mt-1 text-[11px] font-medium text-ink">发布</span>
               </Link>
-              <Tab
-                to="/messages"
-                label="消息"
-                icon={MessageCircle}
-                active={pathname.startsWith("/messages")}
-                badge={unread}
-              />
-              <Tab
-                to="/me"
-                label="我的"
-                icon={UserRound}
-                active={pathname.startsWith("/me")}
-              />
+              <Tab to="/messages" label="消息" icon={MessageCircle} active={pathname.startsWith("/messages")} badge={unread} />
+              <Tab to="/me" label="我的" icon={UserRound} active={pathname.startsWith("/me")} />
             </div>
           </nav>
         )}
       </div>
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          className:
-            "!bg-ink !text-lime !border-0 !font-sans !rounded-lg !shadow-card",
-        }}
-      />
+      <Toaster position="top-center" toastOptions={{ className: "!bg-ink !text-lime !border-0 !font-sans !rounded-lg !shadow-card" }} />
     </div>
   );
 }
@@ -121,6 +88,7 @@ function Tab({
   return (
     <Link
       to={to}
+      preload={false}
       className={cn(
         "relative flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium",
         active ? "text-ink" : "text-muted",
