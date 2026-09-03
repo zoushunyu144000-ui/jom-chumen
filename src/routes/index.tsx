@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   loader: async () => ({ events: await listEventCards() }),
-  staleTime: 60_000,
+  staleTime: 5 * 60_000,
+  gcTime: 10 * 60_000,
   component: Home,
 });
 
