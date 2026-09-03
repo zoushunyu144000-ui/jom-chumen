@@ -27,7 +27,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/manage") ||
     pathname.startsWith("/lookup") ||
     pathname.startsWith("/club/events") ||
-    pathname.startsWith("/club/edit");
+    pathname.startsWith("/club/edit") ||
+    pathname.startsWith("/club/join") ||
+    pathname.startsWith("/chat");
 
   const clubActive =
     pathname === "/club" || pathname === "/club/" || pathname.startsWith("/club/");
@@ -61,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="mt-1 text-[11px] font-medium text-ink">发布</span>
               </Link>
-              <Tab to="/messages" label="消息" icon={MessageCircle} active={pathname.startsWith("/messages")} badge={unread} />
+              <Tab to="/messages" label="消息" icon={MessageCircle} active={pathname.startsWith("/messages") || pathname.startsWith("/chat")} badge={unread} />
               <Tab to="/me" label="我的" icon={UserRound} active={pathname.startsWith("/me")} />
             </div>
           </nav>
