@@ -14,5 +14,5 @@ export function eventShareUrl(slug: string) {
 }
 
 export function eventOgImageUrl(slug: string) {
-  return `${publicSiteUrl()}/api/og/${slug}`;
+  return `${publicSiteUrl()}/api/og/${slug}?v=4`;
 }
