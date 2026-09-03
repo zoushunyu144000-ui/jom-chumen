@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { GALLERY_CAPTION } from "@/components/event-form";
 
 export function EventGallery({
   images,
@@ -10,7 +11,6 @@ export function EventGallery({
   const pics = images.filter(Boolean);
   const [index, setIndex] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
-
   if (pics.length === 0) return null;
 
   function onScroll() {
@@ -25,7 +25,7 @@ export function EventGallery({
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="flex snap-x snap-mandatory overflow-x-auto aspect-4/3 bg-paper-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex aspect-4/3 snap-x snap-mandatory overflow-x-auto bg-paper-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {pics.map((src, i) => (
           <img
@@ -38,37 +38,42 @@ export function EventGallery({
         ))}
       </div>
       {pics.length > 1 ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-          {pics.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1.5 rounded-full ${i === index ? "w-4 bg-lime" : "w-1.5 bg-paper/80"}`}
-            />
-          ))}
-        </div>
-      ) : null}
-      {pics.length > 1 ? (
-        <span className="absolute right-3 bottom-3 rounded-full bg-ink/70 px-2 py-0.5 text-[11px] text-lime">
-          {index + 1}/{pics.length}
-        </span>
+        <>
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+            {pics.map((_, i) => (
+              <span key={i} className={`h-1.5 rounded-full ${i === index ? "w-4 bg-lime" : "w-1.5 bg-paper/80"}`} />
+            ))}
+          </div>
+          <span className="absolute bottom-3 right-3 rounded-full bg-ink/70 px-2 py-0.5 text-[11px] text-lime">
+            {index + 1}/{pics.length}
+          </span>
+        </>
       ) : null}
     </div>
   );
 }
 
 export function eventGalleryImages(event: {
-  coverUrl: string;
-  body: { type: string; src?: string }[];
+  coverUrl?: string;
+  body?: { type: string; src?: string; caption?: string }[];
 }) {
-  const extra = event.body
-    .filter((block) => block.type === "img" && block.src)
+  const extra = (event.body ?? [])
+    .filter((block) => block.type === "img" && block.src && block.caption === GALLERY_CAPTION)
     .map((block) => block.src as string);
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const src of [event.coverUrl, ...extra]) {
+  for (const src of [event.coverUrl ?? "", ...extra]) {
     if (!src || seen.has(src)) continue;
     seen.add(src);
     out.push(src);
+  }
+  if (out.length === 0) {
+    for (const block of event.body ?? []) {
+      if (block.type === "img" && block.src && !seen.has(block.src)) {
+        seen.add(block.src);
+        out.push(block.src);
+      }
+    }
   }
   return out;
 }
