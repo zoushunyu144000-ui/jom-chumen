@@ -1,5 +1,16 @@
 import type { BodyBlock } from "@/lib/types";
 
+export const GALLERY_CAPTION = "__gallery__";
+
+export function isGalleryImage(block: { type?: string; caption?: string } | null | undefined) {
+  if (!block || block.type !== "img") return false;
+  return block.caption === GALLERY_CAPTION || block.caption === "gallery";
+}
+
+export function countGallery(body: { type?: string; caption?: string }[] | null | undefined) {
+  return (body ?? []).filter(isGalleryImage).length;
+}
+
 export function parseBodySafe(raw: string | null | undefined): BodyBlock[] {
   try {
     const parsed = JSON.parse(raw || "[]") as unknown;
@@ -26,5 +37,16 @@ export function rewriteEventMedia<T extends { slug: string; coverUrl: string; bo
     ...event,
     coverUrl: `/api/media/${event.slug}?kind=cover`,
     body,
+  };
+}
+
+export function parseMediaProxy(src: string): { slug: string; kind: string; n: number } | null {
+  const match = /^\/api\/media\/([^/?#]+)(?:\?([^#]*))?/.exec(src);
+  if (!match) return null;
+  const params = new URLSearchParams(match[2] || "");
+  return {
+    slug: decodeURIComponent(match[1]),
+    kind: params.get("kind") || "cover",
+    n: Number(params.get("n") || "0") || 0,
   };
 }

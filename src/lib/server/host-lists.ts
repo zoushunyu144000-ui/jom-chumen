@@ -14,6 +14,8 @@ export type HostEventCard = {
   capacity: number;
   coverUrl: string;
   open: boolean;
+  status: string;
+  applyCount: number;
 };
 
 export const listHostEventCards = createServerFn({ method: "POST" })
@@ -30,14 +32,19 @@ export const listHostEventCards = createServerFn({ method: "POST" })
       capacity: number;
       open: boolean | null;
       booked: number | string | null;
+      status: string | null;
+      apply_count: number | string | null;
     }>`
       select e.id, e.slug, e.title, e.starts_at, e.currency, e.capacity, e.open,
-        coalesce(r.paid_seats, 0) as booked
+        coalesce(e.status, 'published') as status,
+        coalesce(r.paid_seats, 0) as booked,
+        coalesce(r.apply_count, 0) as apply_count
       from events e
       left join (
-        select event_id, sum(seats)::int as paid_seats
+        select event_id,
+          sum(case when payment_status in ('approved', 'paid', 'pending') then seats else 0 end)::int as paid_seats,
+          count(*)::int as apply_count
         from registrations
-        where payment_status in ('approved', 'paid', 'pending')
         group by event_id
       ) r on r.event_id = e.id
       where e.user_id = ${context.userId}
@@ -55,6 +62,8 @@ export const listHostEventCards = createServerFn({ method: "POST" })
       capacity: Number(row.capacity) || 0,
       coverUrl: `/api/media/${row.slug}?kind=cover`,
       open: row.open !== false,
+      status: row.status || "published",
+      applyCount: Number(row.apply_count) || 0,
     }));
   });
 

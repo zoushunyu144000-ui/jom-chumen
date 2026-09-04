@@ -6,6 +6,7 @@ import { currencyForCity } from "@/lib/catalog";
 import { canManageClub, canManageEvent, requireClubOwner, requireManageClub } from "@/lib/server/access";
 import { ensureAppSchema } from "@/lib/server/schema";
 import { makeId } from "@/lib/utils";
+import { countGallery } from "@/lib/server/event-media-parse";
 import { ensureSeeded, eventSelect, mapEvent, type EventRow } from "@/lib/server/events";
 import type { BodyBlock, ClubRecord, ClubStaff, Currency } from "@/lib/types";
 
@@ -266,7 +267,7 @@ export const createEvent = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     assertImage(data.coverUrl);
     const imageCount = data.body.filter((block) => block.type === "img").length;
-    if (imageCount > 6) throw new Error("详情图片最多 6 张");
+    if (imageCount > 12) throw new Error("详情图片最多 12 张");
     for (const block of data.body) {
       if (block.type === "img") assertImage(block.src);
     }
@@ -283,6 +284,17 @@ export const createEvent = createServerFn({ method: "POST" })
       throw new Error("时间不正确");
     }
     if (ends <= starts) throw new Error("结束时间要晚于开始");
+
+    const recent = await sql<{ id: string; slug: string }>`
+      select id, slug from events
+      where user_id = ${context.userId}
+        and title = ${data.title}
+        and starts_at = ${starts.toISOString()}
+        and created_at > ${new Date(Date.now() - 3 * 60 * 1000).toISOString()}
+      order by created_at desc
+      limit 1
+    `;
+    if (recent[0]) return { id: recent[0].id, slug: recent[0].slug };
 
     const id = makeId("evt");
     const slug = `${id.replace("evt_", "j-")}`;
@@ -309,12 +321,14 @@ export const createEvent = createServerFn({ method: "POST" })
 
     const lat = data.lat ?? null;
     const lng = data.lng ?? null;
+    const galleryCount = countGallery(body);
     await sql`
       insert into events (
         id, slug, title, subtitle, category, city, venue, address, lat, lng,
         starts_at, ends_at, currency, price, capacity, sold, cover_url,
         description, highlights, host_name, host_note, level,
-        user_id, club_id, body, open, status, whatsapp, wechat_qr, alipay_qr, tng_qr
+        user_id, club_id, body, open, status, whatsapp, wechat_qr, alipay_qr, tng_qr,
+        gallery_count
       ) values (
         ${id}, ${slug}, ${data.title}, ${data.subtitle}, ${data.category},
         ${data.city}, ${data.venue}, ${data.address}, ${lat}, ${lng},
@@ -322,7 +336,8 @@ export const createEvent = createServerFn({ method: "POST" })
         ${data.price}, ${data.capacity}, ${0}, ${data.coverUrl},
         ${description}, ${JSON.stringify(data.highlights)}, ${clubs[0].name},
         ${data.hostNote}, ${data.level}, ${context.userId}, ${data.clubId},
-        ${JSON.stringify(body)}, ${true}, ${"published"}, ${whatsapp}, ${wechatQr}, ${alipayQr}, ${tngQr}
+        ${JSON.stringify(body)}, ${true}, ${"published"}, ${whatsapp}, ${wechatQr}, ${alipayQr}, ${tngQr},
+        ${galleryCount}
       )
     `;
     return { id, slug };
@@ -360,7 +375,7 @@ export const updateEvent = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     assertImage(data.coverUrl);
     const imageCount = data.body.filter((block) => block.type === "img").length;
-    if (imageCount > 6) throw new Error("详情图片最多 6 张");
+    if (imageCount > 12) throw new Error("详情图片最多 12 张");
     for (const block of data.body) {
       if (block.type === "img") assertImage(block.src);
     }
@@ -401,6 +416,7 @@ export const updateEvent = createServerFn({ method: "POST" })
     );
     const description =
       data.description.trim() || firstPara?.text || data.subtitle || data.title;
+    const galleryCount = countGallery(body);
     await sql`
       update events set
         title = ${data.title},
@@ -423,7 +439,8 @@ export const updateEvent = createServerFn({ method: "POST" })
         host_note = ${data.hostNote},
         level = ${data.level},
         club_id = ${data.clubId},
-        body = ${JSON.stringify(body)}
+        body = ${JSON.stringify(body)},
+        gallery_count = ${galleryCount}
       where id = ${data.eventId}
     `;
     return { id: data.eventId };
@@ -478,6 +495,8 @@ function assertImage(src: string) {
     src.startsWith("data:image/png") ||
     src.startsWith("data:image/webp") ||
     src.startsWith("/covers/") ||
-    src.startsWith("https://");
+    src.startsWith("/api/media/") ||
+    src.startsWith("https://") ||
+    src.startsWith("http://");
   if (!ok) throw new Error("图片格式不支持");
 }

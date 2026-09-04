@@ -1,6 +1,5 @@
 import { getSql } from "@/lib/db";
-import { parseBodySafe } from "@/lib/server/event-media-parse";
-import { GALLERY_CAPTION } from "@/components/event-form";
+import { isGalleryImage, parseBodySafe, parseMediaProxy } from "@/lib/server/event-media-parse";
 import type { BodyBlock } from "@/lib/types";
 
 export async function readEventMedia(slug: string, kind: string, n = 0) {
@@ -18,7 +17,14 @@ export async function readEventMedia(slug: string, kind: string, n = 0) {
   const imgs = parseBodySafe(rows[0]?.body).filter(
     (b): b is Extract<BodyBlock, { type: "img" }> => b.type === "img" && Boolean(b.src),
   );
-  if (kind === "gallery") return imgs.filter((b) => b.caption === GALLERY_CAPTION)[n]?.src ?? null;
-  if (kind === "bodyimg") return imgs.filter((b) => b.caption !== GALLERY_CAPTION)[n]?.src ?? null;
+  if (kind === "gallery") return imgs.filter((b) => isGalleryImage(b))[n]?.src ?? null;
+  if (kind === "bodyimg") return imgs.filter((b) => !isGalleryImage(b))[n]?.src ?? null;
   return imgs[n]?.src ?? null;
+}
+
+export async function resolveMediaSrc(src: string) {
+  const parsed = parseMediaProxy(src);
+  if (!parsed) return src;
+  const real = await readEventMedia(parsed.slug, parsed.kind, parsed.n);
+  return real || src;
 }

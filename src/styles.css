@@ -125,34 +125,24 @@
   }
 }
 
-.jom-spin-wrap {
-  display: flex;
-  width: 3.5rem;
-  height: 3.5rem;
-  align-items: center;
-  justify-content: center;
+.jom-spin {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 999px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
-}
-
-.jom-spin-bar {
-  width: 1.7rem;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--color-lime);
-  box-shadow: 0 0 0 5px rgb(198 225 74 / 0.16);
-  animation: jom-spin 0.85s cubic-bezier(0.5, 0.12, 0.35, 0.88) infinite;
+  border: 2.5px solid var(--color-paper-2);
+  border-top-color: var(--color-lime);
+  animation: jom-spin 0.7s linear infinite;
 }
 
 .jom-route-bar {
   position: fixed;
   inset: 0 0 auto;
   z-index: 70;
-  height: 3px;
+  height: 2px;
   overflow: hidden;
   pointer-events: none;
-  background: rgb(198 225 74 / 0.18);
+  background: rgb(198 225 74 / 0.2);
 }
 
 .jom-route-bar > span {

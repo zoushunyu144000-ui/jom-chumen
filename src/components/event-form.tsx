@@ -1,16 +1,19 @@
+import { useEffect, useRef } from "react";
 import { PhotoStrip } from "@/components/photo-strip";
 import { BlockEditor } from "@/components/block-editor";
 import { PlacePicker } from "@/components/place-picker";
+import { PageLoading } from "@/components/page-loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { CATEGORIES, EVENT_CITIES } from "@/lib/catalog";
+import { GALLERY_CAPTION, isGalleryImage } from "@/lib/server/event-media-parse";
 import type { BodyBlock, CategoryId, CityId, ClubRecord } from "@/lib/types";
 import { Link } from "@tanstack/react-router";
 
-export const GALLERY_CAPTION = "__gallery__";
+export { GALLERY_CAPTION };
 
 export type EventDraft = {
   clubId: string;
@@ -101,13 +104,33 @@ export function EventForm({
 }) {
   const eventCategories = CATEGORIES.filter((c) => c.id !== "all");
   const set = (patch: Partial<EventDraft>) => onChange({ ...value, ...patch });
+  const lock = useRef(false);
+
+  useEffect(() => {
+    if (!busy) lock.current = false;
+  }, [busy]);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy || lock.current) return;
+    lock.current = true;
+    onSubmit(e);
+  }
+
+  const busyLabel = submitLabel.includes("发布") ? "正在发布，请不要重复点击" : "正在保存";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="relative space-y-6">
+      {busy ? (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-paper/85">
+          <PageLoading label={busyLabel} />
+        </div>
+      ) : null}
+      <fieldset disabled={busy} className="min-w-0 w-full space-y-6 border-0 p-0">
       <section className="space-y-3 rounded-xl bg-surface p-4 shadow-card">
         <p className="text-xs font-semibold tracking-wide text-muted">1 · 照片</p>
         <Label>封面和滑动图</Label>
-        <p className="text-xs text-muted">可一次多选。第一张是封面，后面的图在活动页左右滑，不会跑进下面文案。</p>
+        <p className="text-xs text-muted">可一次多选。第一张是封面，竖图按竖图显示，不会被裁成横图。</p>
         <PhotoStrip photos={value.photos} onChange={(photos) => set({ photos, coverUrl: photos[0] ?? "" })} />
       </section>
 
@@ -240,9 +263,10 @@ export function EventForm({
       </div>
       </section>
 
-      <Button type="submit" className="w-full" disabled={busy}>
-        {busy ? "保存中…" : submitLabel}
+      <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
+        {busy ? busyLabel : submitLabel}
       </Button>
+      </fieldset>
     </form>
   );
 }
@@ -270,11 +294,10 @@ export function draftFromEvent(event: {
   refundFeePercent?: number;
 }): EventDraft {
   const gallery = event.body.filter(
-    (block): block is Extract<BodyBlock, { type: "img" }> =>
-      block.type === "img" && block.caption === GALLERY_CAPTION,
+    (block): block is Extract<BodyBlock, { type: "img" }> => isGalleryImage(block),
   );
   const photos = [event.coverUrl, ...gallery.map((b) => b.src)].filter((src, i, arr) => src && arr.indexOf(src) === i);
-  const body = event.body.filter((block) => !(block.type === "img" && block.caption === GALLERY_CAPTION));
+  const body = event.body.filter((block) => !isGalleryImage(block));
   return {
     clubId: event.clubId ?? "",
     newClubName: "",
@@ -306,7 +329,7 @@ export function parseEventDraft(value: EventDraft) {
   const coverUrl = photos[0] ?? value.coverUrl;
   const galleryBlocks: BodyBlock[] = photos.slice(1).map((src) => ({ type: "img", src, caption: GALLERY_CAPTION }));
   const content = value.body.filter((block) => {
-    if (block.type === "img") return block.src && block.caption !== GALLERY_CAPTION;
+    if (block.type === "img") return block.src && !isGalleryImage(block);
     if (block.type === "ul") return block.items.some((item) => item.trim());
     return Boolean((block as { text?: string }).text?.trim());
   });

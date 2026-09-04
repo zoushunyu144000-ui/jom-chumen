@@ -65,8 +65,8 @@ export function PhotoStrip({
       </p>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {photos.map((src, i) => (
-          <div key={`${i}-${src.slice(-12)}`} className="relative w-28 shrink-0">
-            <img src={src} alt="" className="aspect-4/3 w-28 rounded-lg object-cover" />
+          <div key={`${i}-${src.slice(-12)}`} className="relative w-24 shrink-0">
+            <img src={src} alt="" className="aspect-[3/4] w-24 rounded-lg object-cover" />
             <span className="absolute left-1 top-1 rounded bg-ink/80 px-1.5 py-0.5 text-[10px] text-lime">
               {i === 0 ? "封面" : `第 ${i + 1} 张`}
             </span>
@@ -84,7 +84,7 @@ export function PhotoStrip({
           </div>
         ))}
         {photos.length < MAX_PHOTOS ? (
-          <label className="flex aspect-4/3 w-28 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line bg-surface text-xs text-muted">
+          <label className="flex aspect-[3/4] w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line bg-surface text-xs text-muted">
             <input
               ref={inputRef}
               type="file"

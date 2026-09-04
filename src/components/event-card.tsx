@@ -32,7 +32,7 @@ export function EventCard({
   if (featured) {
     return (
       <Link to="/events/$slug" params={{ slug: event.slug }} preload={false} className="rise-in group relative block overflow-hidden rounded-xl">
-        <Cover src={event.coverUrl} alt={event.title} className="aspect-4/5 w-full object-cover sm:aspect-4/3" />
+        <Cover src={event.coverUrl} alt={event.title} className="aspect-[4/5] w-full object-cover sm:aspect-[4/3]" />
         <div className="absolute inset-0 bg-linear-to-t from-ink/80 via-ink/20 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4 text-surface">
           <Badge className="mb-2">{categoryName(event.category)}</Badge>
@@ -55,7 +55,7 @@ export function EventCard({
   return (
     <Link to="/events/$slug" params={{ slug: event.slug }} preload={false} className="group block">
       <div className="relative overflow-hidden rounded-lg">
-        <Cover src={event.coverUrl} alt={event.title} className="aspect-4/3 w-full object-cover" />
+        <Cover src={event.coverUrl} alt={event.title} className="aspect-[3/4] w-full object-cover" />
         <Badge className="absolute left-2 top-2">{categoryName(event.category)}</Badge>
         {tight ? (
           <span className="absolute right-2 top-2 rounded-full bg-ink/85 px-2 py-0.5 text-[11px] font-medium text-lime">

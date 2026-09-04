@@ -5,6 +5,8 @@ import { getSql } from "@/lib/db";
 import { requireManageClub, requireManageEvent } from "@/lib/server/access";
 import { ensureAppSchema } from "@/lib/server/schema";
 import { currencyForCity } from "@/lib/catalog";
+import { countGallery, isGalleryImage } from "@/lib/server/event-media-parse";
+import { resolveMediaSrc } from "@/lib/server/event-media";
 import { mapEvent, type EventRow } from "@/lib/server/events";
 import type { BodyBlock } from "@/lib/types";
 
@@ -16,6 +18,23 @@ const blockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("img"), src: z.string().max(1_500_000), caption: z.string().max(80).default("") }),
 ]);
 
+function clientCover(slug: string, coverUrl: string) {
+  if (coverUrl.startsWith("data:")) return `/api/media/${slug}?kind=cover`;
+  return coverUrl;
+}
+
+function clientBody(slug: string, body: BodyBlock[]) {
+  let galleryN = 0;
+  let bodyN = 0;
+  return body.map((block) => {
+    if (block.type !== "img" || !block.src?.startsWith("data:")) return block;
+    const src = isGalleryImage(block)
+      ? `/api/media/${slug}?kind=gallery&n=${galleryN++}`
+      : `/api/media/${slug}?kind=bodyimg&n=${bodyN++}`;
+    return { ...block, src };
+  });
+}
+
 export const getEditEvent = createServerFn({ method: "POST" })
   .validator((data: unknown) => z.object({ eventId: z.string().min(1) }).parse(data))
   .middleware([authMiddleware])
@@ -26,9 +45,11 @@ export const getEditEvent = createServerFn({ method: "POST" })
     const rows = await sql.query<EventRow>(
       `select e.id, e.slug, e.title, e.subtitle, e.category, e.city, e.venue, e.address,
               e.starts_at, e.ends_at, e.currency, e.price, e.capacity, e.sold,
-              '' as cover_url, e.description, e.highlights, e.host_name, e.host_note,
+              e.cover_url, e.description, e.highlights, e.host_name, e.host_note,
               e.level, e.club_id, e.user_id, e.open, e.lat, e.lng, e.body,
-              e.whatsapp, e.wechat_qr, e.alipay_qr, e.tng_qr
+              e.whatsapp, e.wechat_qr, e.alipay_qr, e.tng_qr,
+              coalesce(e.refund_hours, 24) as refund_hours,
+              coalesce(e.refund_fee_percent, 50) as refund_fee_percent
        from events e
        where e.id = $1
        limit 1`,
@@ -36,7 +57,14 @@ export const getEditEvent = createServerFn({ method: "POST" })
     );
     if (!rows[0]) return null;
     const event = mapEvent(rows[0]);
-    return { ...event, coverUrl: `/api/media/${event.slug}?kind=cover` };
+    const extra = rows[0] as EventRow & { refund_hours?: number | string; refund_fee_percent?: number | string };
+    return {
+      ...event,
+      coverUrl: clientCover(event.slug, event.coverUrl),
+      body: clientBody(event.slug, event.body),
+      refundHours: Number(extra.refund_hours) || 24,
+      refundFeePercent: Number(extra.refund_fee_percent) || 50,
+    };
   });
 
 export const saveEventEdits = createServerFn({ method: "POST" })
@@ -62,6 +90,8 @@ export const saveEventEdits = createServerFn({ method: "POST" })
       hostNote: z.string().trim().max(80).default(""),
       level: z.enum(["newbie", "all", "intermediate"]).default("all"),
       body: z.array(blockSchema).max(24).default([]),
+      refundHours: z.number().int().min(0).max(168).optional(),
+      refundFeePercent: z.number().int().min(0).max(100).optional(),
     }).parse(data),
   )
   .middleware([authMiddleware])
@@ -70,8 +100,8 @@ export const saveEventEdits = createServerFn({ method: "POST" })
     await requireManageEvent(context.userId, data.eventId);
     await requireManageClub(context.userId, data.clubId);
     const sql = await getSql();
-    const owned = await sql<{ id: string; booked: number }>`
-      select e.id, coalesce(r.n, 0)::int as booked
+    const owned = await sql<{ id: string; slug: string; booked: number; cover_url: string }>`
+      select e.id, e.slug, e.cover_url, coalesce(r.n, 0)::int as booked
       from events e
       left join (
         select event_id, sum(seats)::int as n from registrations
@@ -87,9 +117,19 @@ export const saveEventEdits = createServerFn({ method: "POST" })
     if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime()) || ends <= starts) {
       throw new Error("时间不正确");
     }
-    const replaceCover = data.coverUrl.startsWith("data:image");
-    const body = data.body as BodyBlock[];
-    const gallery = body.filter((b) => b.type === "img" && b.caption === "gallery").length;
+    const coverUrl = data.coverUrl ? await resolveMediaSrc(data.coverUrl) : "";
+    const resolvedBody: BodyBlock[] = [];
+    for (const block of data.body as BodyBlock[]) {
+      if (block.type !== "img") {
+        resolvedBody.push(block);
+        continue;
+      }
+      resolvedBody.push({ ...block, src: await resolveMediaSrc(block.src) });
+    }
+    const nextCover = coverUrl || owned[0].cover_url;
+    const gallery = countGallery(resolvedBody);
+    const refundHours = data.refundHours ?? 24;
+    const refundFeePercent = data.refundFeePercent ?? 50;
     await sql`
       update events set
         title = ${data.title},
@@ -105,15 +145,17 @@ export const saveEventEdits = createServerFn({ method: "POST" })
         currency = ${currencyForCity(data.city)},
         price = ${data.price},
         capacity = ${data.capacity},
-        cover_url = case when ${replaceCover} then ${data.coverUrl} else cover_url end,
+        cover_url = ${nextCover},
         description = ${data.description},
         highlights = ${JSON.stringify(data.highlights)},
         host_note = ${data.hostNote},
         level = ${data.level},
         club_id = ${data.clubId},
-        body = ${JSON.stringify(body)},
-        gallery_count = ${gallery}
+        body = ${JSON.stringify(resolvedBody)},
+        gallery_count = ${gallery},
+        refund_hours = ${refundHours},
+        refund_fee_percent = ${refundFeePercent}
       where id = ${data.eventId}
     `;
-    return { id: data.eventId };
+    return { id: data.eventId, slug: owned[0].slug };
   });

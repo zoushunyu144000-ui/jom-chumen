@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "@/lib/db";
-import { mapEvent, type EventRow } from "@/lib/server/events";
+import { ensureSeeded, mapEvent, type EventRow } from "@/lib/server/events";
 import type { EventRecord } from "@/lib/types";
 
 const cardSelect = `
@@ -26,6 +26,7 @@ const cardSelect = `
 
 export const listEventCards = createServerFn({ method: "GET" }).handler(
   async (): Promise<EventRecord[]> => {
+    await ensureSeeded();
     const sql = await getSql();
     const rows = await sql.query<EventRow>(`${cardSelect} order by e.starts_at asc limit 60`);
     return rows

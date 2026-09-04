@@ -6,23 +6,24 @@ import { EventBody } from "@/components/event-body";
 import { EventGallery, eventGalleryImages } from "@/components/event-gallery";
 import { EventPeople } from "@/components/event-people";
 import { EventShareButton } from "@/components/event-share";
-import { GALLERY_CAPTION } from "@/components/event-form";
-import { RoutePending } from "@/components/page-loading";
+import { EventPageSkeleton } from "@/components/page-loading";
 import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
 import { formatPrice, formatRange } from "@/lib/format";
 import { eventOgImageUrl, eventShareUrl } from "@/lib/public-url";
 import { getPublicEvent } from "@/lib/server/event-public";
+import { getEventIntro } from "@/lib/server/event-meta";
 
 export const Route = createFileRoute("/events/$slug/")({
   loader: async ({ params }) => {
     const event = await getPublicEvent({ data: { slug: params.slug } });
     if (!event) throw notFound();
-    return { event };
+    const intro = await getEventIntro({ data: { slug: params.slug } }).catch(() => []);
+    return { event, intro };
   },
-  staleTime: 15_000,
+  staleTime: 0,
   pendingMs: 0,
-  pendingComponent: () => <RoutePending label="打开活动" />,
+  pendingComponent: () => <EventPageSkeleton label="打开活动" />,
   head: ({ loaderData }) => {
     const event = loaderData?.event;
     if (!event) return {};
@@ -65,11 +66,10 @@ export const Route = createFileRoute("/events/$slug/")({
 });
 
 function EventDetail() {
-  const { event } = Route.useLoaderData();
+  const { event, intro } = Route.useLoaderData();
   const soldOut = event.remaining <= 0;
-  const body = event.body ?? [];
-  const images = eventGalleryImages({ coverUrl: event.coverUrl, body });
-  const introBlocks = body.filter((block) => !(block.type === "img" && block.caption === GALLERY_CAPTION));
+  const images = eventGalleryImages({ coverUrl: event.coverUrl, body: event.body });
+  const introBlocks = intro ?? [];
   const hasIntro = introBlocks.some((block) => {
     if (block.type === "img") return Boolean(block.src);
     if (block.type === "ul") return block.items.some((item) => item.trim());
@@ -77,11 +77,28 @@ function EventDetail() {
   });
   const hasMap = event.lat != null && event.lng != null;
   const apply = event.myApply;
+  const priceLabel = formatPrice(event.price, event.currency);
 
   return (
     <main className="pb-28">
       <div className="relative">
-        <EventGallery images={images.length ? images : [event.coverUrl]} alt={event.title} />
+        <EventGallery
+          images={images.length ? images : [event.coverUrl]}
+          alt={event.title}
+          footer={
+            <div className="flex items-end justify-between gap-3 text-surface">
+              <div className="min-w-0">
+                <p className="font-display text-[1.75rem] font-bold leading-none tabular-nums text-lime">
+                  {priceLabel}
+                </p>
+                <p className="mt-2 truncate text-sm text-surface/80">{formatRange(event.startsAt, event.endsAt, event.currency)}</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-lime px-3 py-1.5 text-xs font-semibold text-ink">
+                {soldOut ? "已满" : `还剩 ${event.remaining} 席`}
+              </span>
+            </div>
+          }
+        />
         <Link to="/" className="absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-card" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
@@ -93,12 +110,24 @@ function EventDetail() {
       <section className="px-4 pt-4">
         <p className="text-xs font-medium text-muted">{cityName(event.city)}</p>
         <h1 className="mt-1 font-display text-[1.7rem] font-bold leading-tight tracking-tight">{event.title}</h1>
-        <ul className="mt-4 space-y-3 rounded-xl bg-ink p-4 text-sm text-surface shadow-card">
-          <li className="flex gap-3"><Calendar className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span></li>
-          <li className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{event.venue}</span></li>
-          <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-display text-lg font-bold text-lime">{formatPrice(event.price, event.currency)}</span></li>
-          <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">已报 {event.booked}/{event.capacity}</span></li>
-        </ul>
+        {event.subtitle ? <p className="mt-1 text-sm text-ink-soft">{event.subtitle}</p> : null}
+        <div className="mt-4 overflow-hidden rounded-xl bg-ink text-surface shadow-card">
+          <div className="flex items-end justify-between gap-3 px-4 pt-4 pb-3">
+            <div>
+              <p className="text-[11px] tracking-wide text-surface/55">费用</p>
+              <p className="mt-1 font-display text-3xl font-bold leading-none tabular-nums text-lime">{priceLabel}</p>
+            </div>
+            <span className="rounded-full bg-lime/20 px-3 py-1 text-sm font-medium text-lime">
+              已报 {event.booked}/{event.capacity}
+            </span>
+          </div>
+          <ul className="space-y-3 border-t border-white/10 px-4 py-3 text-sm">
+            <li className="flex gap-3"><Calendar className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span></li>
+            <li className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{event.venue}</span></li>
+            <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">名额 {event.capacity} · 剩余 {event.remaining}</span></li>
+            <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{priceLabel}{event.price > 0 ? " · 扫码付款后由主办确认" : " · 免费局，仍需主办确认"}</span></li>
+          </ul>
+        </div>
         <EventPeople slug={event.slug} />
         {hasMap ? <EventMap lat={event.lat as number} lng={event.lng as number} label={event.venue} className="mt-4" /> : null}
         {event.clubId && event.clubName ? (
@@ -139,7 +168,7 @@ function EventDetail() {
       </section>
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 border-t border-line bg-paper/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div>
-          <p className="font-display text-xl font-bold tabular-nums leading-none">{formatPrice(event.price, event.currency)}</p>
+          <p className="font-display text-xl font-bold tabular-nums leading-none">{priceLabel}</p>
           <p className="mt-1 text-[11px] text-muted">{apply ? "已报名" : soldOut ? "名额已满" : `已报 ${event.booked}/${event.capacity}`}</p>
         </div>
         {apply ? (

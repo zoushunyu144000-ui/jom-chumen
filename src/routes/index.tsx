@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CityBar } from "@/components/city-bar";
 import { EventCard } from "@/components/event-card";
-import { RoutePending } from "@/components/page-loading";
+import { FeedSkeleton } from "@/components/page-loading";
 import { CATEGORIES } from "@/lib/catalog";
 import { listEventCards } from "@/lib/server/event-cards";
 import { useAppStore } from "@/lib/store";
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/")({
   staleTime: 5 * 60_000,
   gcTime: 10 * 60_000,
   pendingMs: 0,
-  pendingComponent: () => <RoutePending label="加载中" />,
+  pendingComponent: () => <FeedSkeleton label="加载中" />,
   component: Home,
 });
 

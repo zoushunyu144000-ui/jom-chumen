@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { EventForm, draftFromEvent, parseEventDraft, type EventDraft } from "@/components/event-form";
@@ -16,6 +16,7 @@ function EditEventPage() {
   const { eventId } = Route.useParams();
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
+  const router = useRouter();
   const [clubs, setClubs] = useState<ClubRecord[]>([]);
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,19 +52,19 @@ function EditEventPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!draft) return;
-    const parsed = parseEventDraft(draft);
-    if (!parsed.title || !parsed.venue) {
-      toast.error("标题和地点都要有");
-      return;
-    }
-    if (!parsed.clubId) {
-      toast.error("请选择俱乐部");
-      return;
-    }
+    if (!draft || busy) return;
     setBusy(true);
     try {
-      await saveEventEdits({
+      const parsed = parseEventDraft(draft);
+      if (!parsed.title || !parsed.venue) {
+        toast.error("标题和地点都要有");
+        return;
+      }
+      if (!parsed.clubId) {
+        toast.error("请选择俱乐部");
+        return;
+      }
+      const saved = await saveEventEdits({
         data: {
           eventId,
           clubId: parsed.clubId,
@@ -85,10 +86,13 @@ function EditEventPage() {
           hostNote: parsed.hostNote,
           level: parsed.level,
           body: parsed.body,
+          refundHours: parsed.refundHours,
+          refundFeePercent: parsed.refundFeePercent,
         },
       });
       toast.success("已保存");
-      await navigate({ to: "/club" });
+      await router.invalidate();
+      await navigate({ to: "/events/$slug", params: { slug: saved.slug } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "保存失败");
     } finally {
