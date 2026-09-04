@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, MapPin, Ticket, Users } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventBody } from "@/components/event-body";
@@ -82,23 +82,7 @@ function EventDetail() {
   return (
     <main className="pb-28">
       <div className="relative">
-        <EventGallery
-          images={images.length ? images : [event.coverUrl]}
-          alt={event.title}
-          footer={
-            <div className="flex items-end justify-between gap-3 text-surface">
-              <div className="min-w-0">
-                <p className="font-display text-[1.75rem] font-bold leading-none tabular-nums text-lime">
-                  {priceLabel}
-                </p>
-                <p className="mt-2 truncate text-sm text-surface/80">{formatRange(event.startsAt, event.endsAt, event.currency)}</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-lime px-3 py-1.5 text-xs font-semibold text-ink">
-                {soldOut ? "已满" : `还剩 ${event.remaining} 席`}
-              </span>
-            </div>
-          }
-        />
+        <EventGallery images={images.length ? images : [event.coverUrl]} alt={event.title} />
         <Link to="/" className="absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-card" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
@@ -111,23 +95,26 @@ function EventDetail() {
         <p className="text-xs font-medium text-muted">{cityName(event.city)}</p>
         <h1 className="mt-1 font-display text-[1.7rem] font-bold leading-tight tracking-tight">{event.title}</h1>
         {event.subtitle ? <p className="mt-1 text-sm text-ink-soft">{event.subtitle}</p> : null}
-        <div className="mt-4 overflow-hidden rounded-xl bg-ink text-surface shadow-card">
-          <div className="flex items-end justify-between gap-3 px-4 pt-4 pb-3">
-            <div>
-              <p className="text-[11px] tracking-wide text-surface/55">费用</p>
-              <p className="mt-1 font-display text-3xl font-bold leading-none tabular-nums text-lime">{priceLabel}</p>
-            </div>
-            <span className="rounded-full bg-lime/20 px-3 py-1 text-sm font-medium text-lime">
-              已报 {event.booked}/{event.capacity}
+
+        <ul className="mt-4 space-y-2.5 text-[15px]">
+          <li className="flex gap-3">
+            <Calendar className="mt-0.5 size-4 shrink-0 text-muted" />
+            <span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span>
+          </li>
+          <li className="flex gap-3">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-muted" />
+            <span className="font-medium">{event.venue}</span>
+          </li>
+          <li className="flex gap-3">
+            <Users className="mt-0.5 size-4 shrink-0 text-muted" />
+            <span className="font-medium">
+              {priceLabel}
+              <span className="text-muted"> · </span>
+              {soldOut ? "已满" : `已报 ${event.booked}/${event.capacity}`}
             </span>
-          </div>
-          <ul className="space-y-3 border-t border-white/10 px-4 py-3 text-sm">
-            <li className="flex gap-3"><Calendar className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span></li>
-            <li className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{event.venue}</span></li>
-            <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">名额 {event.capacity} · 剩余 {event.remaining}</span></li>
-            <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{priceLabel}{event.price > 0 ? " · 扫码付款后由主办确认" : " · 免费局，仍需主办确认"}</span></li>
-          </ul>
-        </div>
+          </li>
+        </ul>
+
         <EventPeople slug={event.slug} />
         {hasMap ? <EventMap lat={event.lat as number} lng={event.lng as number} label={event.venue} className="mt-4" /> : null}
         {event.clubId && event.clubName ? (

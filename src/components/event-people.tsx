@@ -2,18 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { listEventAttendees, type Attendee } from "@/lib/server/people";
 
-function Face({ person, light }: { person: Attendee; light?: boolean }) {
-  const ring = person.pending ? "ring-2 ring-dashed ring-lime" : light ? "ring-2 ring-ink" : "ring-2 ring-paper";
+function Face({ person }: { person: Attendee }) {
+  const ring = person.pending ? "ring-2 ring-dashed ring-lime" : "ring-2 ring-paper";
   return (
     <span className={`relative rounded-full ${ring}`}>
       {person.avatarUrl ? (
-        <img src={person.avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+        <img src={person.avatarUrl} alt="" className="size-8 rounded-full object-cover [outline:none]" />
       ) : (
         <span className="flex size-8 items-center justify-center rounded-full bg-lime text-[11px] font-bold text-ink">
           {(person.name || "?").slice(0, 1)}
         </span>
       )}
-      {person.pending ? <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-sm bg-lime px-0.5 text-[8px] font-bold text-ink">预</span> : null}
     </span>
   );
 }
@@ -29,33 +28,27 @@ export function EventPeople({ slug }: { slug: string }) {
     listEventAttendees({ data: { slug } }).then(setPeople).catch(() => setPeople([]));
   }, [slug]);
 
-  const pending = people.filter((p) => p.pending).length;
-  const confirmed = people.length - pending;
+  if (people.length === 0) return null;
+  const confirmed = people.filter((p) => !p.pending).length;
 
   return (
-    <div className="mt-3 rounded-xl bg-surface px-3 py-3 shadow-card">
-      <p className="text-sm font-medium">
-        报名 {people.length} 人
-        {confirmed ? ` · 已确认 ${confirmed}` : ""}
-        {pending ? ` · 预报名 ${pending}` : ""}
+    <div className="mt-4 flex items-center gap-3">
+      <div className="flex -space-x-2">
+        {people.slice(0, 6).map((person, i) => (
+          <button key={`${person.userId || person.name}-${i}`} type="button" onClick={() => setOpen(person)}>
+            <Face person={person} />
+          </button>
+        ))}
+      </div>
+      <p className="text-sm text-muted">
+        {confirmed} 人已确认{people.length > confirmed ? ` · ${people.length - confirmed} 预报名` : ""}
       </p>
-      {people.length === 0 ? (
-        <p className="mt-1 text-xs text-muted">还没有人报名</p>
-      ) : (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {people.slice(0, 12).map((person, i) => (
-            <button key={`${person.userId || person.name}-${i}`} type="button" onClick={() => setOpen(person)}>
-              <Face person={person} light />
-            </button>
-          ))}
-        </div>
-      )}
       {open ? (
         <div className="fixed inset-0 z-50 flex items-end bg-ink/50" onClick={() => setOpen(null)}>
           <div className="w-full rounded-t-2xl bg-paper px-4 pb-8 pt-4" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
             <div className="flex items-center gap-3">
-              <Face person={open} light />
+              <Face person={open} />
               <div>
                 <p className="font-medium">{open.name}</p>
                 <p className="text-xs text-muted">{GENDER[open.gender] || "性别未填"}{open.pending ? " · 预报名" : " · 已确认"}</p>

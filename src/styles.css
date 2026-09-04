@@ -66,8 +66,7 @@
   }
 
   img {
-    outline: 1px solid rgb(18 20 16 / 0.08);
-    outline-offset: -1px;
+    display: block;
   }
 }
 

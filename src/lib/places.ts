@@ -46,7 +46,7 @@ const ZH_STATE: Record<string, string> = {
   "MY-04": "马六甲",
   "MY-05": "森美兰",
   "MY-06": "彭亨",
-  "MY-07": "榎城",
+  "MY-07": "槟城",
   "MY-08": "霹雳",
   "MY-09": "玻璃市",
   "MY-10": "雪兰蕾",
@@ -70,7 +70,7 @@ const ZH_STATE: Record<string, string> = {
 
 const ZH_CITY: Record<string, string> = {
   "George Town": "乔治城",
-  Penang: "榎城",
+  Penang: "槟城",
   "Kuala Lumpur": "吉隆坡",
   "Johor Bahru": "新山",
   Singapore: "新加坡",
@@ -167,16 +167,30 @@ export function cityNameZh(name: string) {
 }
 
 export function placeChip(place: SelectedPlace) {
-  return place.cityName || "选择城市";
+  if (place.cityName) return place.cityName;
+  if (place.stateName) return place.stateName;
+  if (place.countryName) return place.countryName;
+  return "选择城市";
 }
 
 const CITY_ALIASES: { id: Exclude<CityId, "all">; tests: RegExp[] }[] = [
-  { id: "penang", tests: [/penang/i, /pulau pinang/i, /george town/i, /georgetown/i, /榎城/, /乔治城/] },
-  { id: "kl", tests: [/kuala lumpur/i, /吉隆坡/, /\bkl\b/i] },
+  { id: "penang", tests: [/penang/i, /pulau pinang/i, /george town/i, /georgetown/i, /槟城/, /乔治城/] },
+  { id: "kl", tests: [/kuala lumpur/i, /吉隆坡/, /\bkl\b/i, /雪兰莪/, /selangor/i] },
   { id: "jb", tests: [/johor bahru/i, /johor/i, /新山/, /柔佛/] },
   { id: "singapore", tests: [/singapore/i, /新加坡/] },
   { id: "bangkok", tests: [/bangkok/i, /krung thep/i, /曼谷/] },
 ];
+
+export const CITY_REGION: Record<
+  Exclude<CityId, "all">,
+  { country: string; stateKeys: string[] }
+> = {
+  penang: { country: "MY", stateKeys: ["penang", "pulau pinang", "槟城", "george town", "georgetown"] },
+  kl: { country: "MY", stateKeys: ["kuala lumpur", "selangor", "吉隆坡", "雪兰莪", "petaling"] },
+  jb: { country: "MY", stateKeys: ["johor", "柔佛", "新山", "johor bahru"] },
+  singapore: { country: "SG", stateKeys: ["singapore", "新加坡"] },
+  bangkok: { country: "TH", stateKeys: ["bangkok", "曼谷", "krung thep"] },
+};
 
 export function matchCatalogCity(
   cityName: string,
@@ -208,6 +222,46 @@ export function buildPlace(input: {
     cityName: cityNameZh(input.cityName) || input.cityName,
     stateName: input.stateName || "",
     countryName: input.countryName || "",
-    countryCode: input.countryCode || "",
+    countryCode: (input.countryCode || "").toUpperCase(),
   };
+}
+
+export function eventMatchesPlace(
+  event: { city: string; venue?: string; address?: string },
+  place: SelectedPlace,
+): boolean {
+  if ((!place.countryCode && place.cityId === "all" && !place.world) || (!place.cityName && place.cityId === "all" && !place.countryCode)) {
+    return true;
+  }
+  const region = CITY_REGION[event.city as Exclude<CityId, "all">];
+  const catalogId = matchCatalogCity(place.cityName, place.stateName, place.countryCode);
+  if (catalogId !== "all" && catalogId === event.city) return true;
+  if (place.cityId !== "all" && place.cityId === event.city) return true;
+
+  if (place.countryCode) {
+    if (!region || region.country !== place.countryCode.toUpperCase()) return false;
+    if (place.stateName) {
+      const state = place.stateName.toLowerCase();
+      const hit = region.stateKeys.some((key) => state.includes(key) || key.includes(state));
+      if (hit) return true;
+      // unknown small city under a known country/state: still show the state's/country's events
+      if (catalogId === "all") return true;
+      return false;
+    }
+    return true;
+  }
+
+  if (place.world && place.cityName) {
+    const hay = `${event.city} ${event.venue ?? ""} ${event.address ?? ""} ${place.cityName}`.toLowerCase();
+    const q = place.cityName.toLowerCase();
+    if (hay.includes(q)) return true;
+    if (region && region.stateKeys.some((key) => q.includes(key) || key.includes(q))) return true;
+    return false;
+  }
+
+  return place.cityId === "all";
+}
+
+export function clubMatchesPlace(club: { city: string; name?: string }, place: SelectedPlace) {
+  return eventMatchesPlace({ city: club.city, venue: club.name, address: "" }, place);
 }

@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { Calendar, MapPin } from "lucide-react";
+import { CoverFrame } from "@/components/cover-frame";
 import { TicketQr } from "@/components/ticket-qr";
 import { categoryName, cityName } from "@/lib/catalog";
 import { applyStatusLabel, formatPrice, formatRange, isApplySuccess, paymentLabel } from "@/lib/format";
@@ -16,14 +17,13 @@ export const TicketView = forwardRef<HTMLElement, { ticket: TicketRecord }>(func
     : applyStatusLabel(ticket.paymentStatus === "cancelled" ? "cancelled" : ticket.paymentStatus);
   return (
     <article ref={ref} data-ticket-card="1" className="overflow-hidden rounded-xl bg-surface shadow-card">
-      <div className="h-1.5 bg-lime" />
-      <div className="relative aspect-2/1 overflow-hidden bg-paper-2">
-        <img
-          src={event.coverUrl}
-          alt=""
-          className="absolute inset-0 size-full object-cover"
-        />
-      </div>
+      <CoverFrame
+        src={event.coverUrl}
+        alt={event.title}
+        minRatio={0.56}
+        maxRatio={1.15}
+        fallbackRatio={0.72}
+      />
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted">Jom 出门局</p>

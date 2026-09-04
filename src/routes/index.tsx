@@ -5,6 +5,7 @@ import { EventCard } from "@/components/event-card";
 import { FeedSkeleton } from "@/components/page-loading";
 import { CATEGORIES } from "@/lib/catalog";
 import { listEventCards } from "@/lib/server/event-cards";
+import { eventMatchesPlace } from "@/lib/places";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -29,12 +30,7 @@ function Home() {
     const q = query.trim().toLowerCase();
     return events.filter((event) => {
       if (new Date(event.endsAt).getTime() < Date.now()) return false;
-      if (place.world && place.cityName) {
-        const hay = `${event.city} ${event.venue} ${event.address}`.toLowerCase();
-        if (!hay.includes(place.cityName.toLowerCase()) && event.city !== place.cityId) return false;
-      } else if (place.cityId !== "all" && event.city !== place.cityId) {
-        return false;
-      }
+      if (!eventMatchesPlace(event, place)) return false;
       if (category !== "all" && event.category !== category) return false;
       if (!q) return true;
       return `${event.title} ${event.subtitle} ${event.venue} ${event.hostName}`.toLowerCase().includes(q);

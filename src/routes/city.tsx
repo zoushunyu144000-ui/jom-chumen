@@ -9,6 +9,7 @@ import {
   buildPlace,
   cityNameZh,
   countryNameZh,
+  matchCatalogCity,
   stateNameZh,
 } from "@/lib/places";
 import { useAppStore } from "@/lib/store";
@@ -127,6 +128,34 @@ function CityPage() {
         countryCode: row.countryCode,
       }),
     );
+    void navigate({ to: "/" });
+  }
+
+  function pickCountryAll(row: CountryRow) {
+    const countryZh = countryNameZh(row.isoCode, row.name);
+    setPlace({
+      cityId: "all",
+      world: false,
+      cityName: countryZh,
+      stateName: "",
+      countryName: countryZh,
+      countryCode: row.isoCode,
+    });
+    void navigate({ to: "/" });
+  }
+
+  function pickStateAll(row: StateRow, countryRow: CountryRow) {
+    const countryZh = countryNameZh(countryRow.isoCode, countryRow.name);
+    const stateZh = stateNameZh(row.countryCode, row.isoCode, row.name);
+    const mapped = matchCatalogCity(stateZh, stateZh, row.countryCode);
+    setPlace({
+      cityId: mapped,
+      world: mapped === "all",
+      cityName: stateZh,
+      stateName: stateZh,
+      countryName: countryZh,
+      countryCode: row.countryCode,
+    });
     void navigate({ to: "/" });
   }
 
@@ -322,6 +351,16 @@ function CityPage() {
 
         {country && !state ? (
           <ul className="space-y-1">
+            <li>
+              <button
+                type="button"
+                onClick={() => pickCountryAll(country)}
+                className="flex h-12 w-full items-center justify-between rounded-lg bg-lime px-3 text-left text-sm font-medium"
+              >
+                看{countryNameZh(country.isoCode, country.name)}全部活动
+                <span className="text-xs font-normal text-ink-soft">含这个国家所有城市</span>
+              </button>
+            </li>
             {states.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">没有找到省份</p>
             ) : (
@@ -343,8 +382,18 @@ function CityPage() {
 
         {country && state ? (
           <ul className="space-y-1">
+            <li>
+              <button
+                type="button"
+                onClick={() => pickStateAll(state, country)}
+                className="flex h-12 w-full items-center justify-between rounded-lg bg-lime px-3 text-left text-sm font-medium"
+              >
+                看{stateNameZh(state.countryCode, state.isoCode, state.name)}全部活动
+                <span className="text-xs font-normal text-ink-soft">不必再选更小的城市</span>
+              </button>
+            </li>
             {cities.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted">这一带没有列出城市</p>
+              <p className="py-8 text-center text-sm text-muted">这一带没有列出城市，上面可以直接看全省活动</p>
             ) : (
               cities.map((c) => (
                 <li key={`${c.stateCode}-${c.name}`}>

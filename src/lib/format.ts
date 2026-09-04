@@ -87,6 +87,21 @@ export function isApplySuccess(status: string) {
   return status === "approved" || status === "paid";
 }
 
+export function formatChatTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startMsg = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayDiff = Math.round((startToday - startMsg) / 86_400_000);
+  if (dayDiff === 0) return time;
+  if (dayDiff === 1) return `昨天 ${time}`;
+  if (d.getFullYear() === now.getFullYear()) return `${d.getMonth() + 1}月${d.getDate()}日 ${time}`;
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${time}`;
+}
+
 export function dayKey(iso: string, currency?: Currency) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: zoneFor(currency),

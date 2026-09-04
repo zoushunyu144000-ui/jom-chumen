@@ -156,9 +156,24 @@ function ClubStudioPage() {
                       </div>
                     </Link>
                     <div className="mt-2 grid grid-cols-3 gap-2">
-                      <Button asChild variant="outline" size="sm"><Link to="/events/$slug" params={{ slug: event.slug }}>活动页</Link></Button>
                       <Button asChild variant="outline" size="sm"><Link to="/manage/$eventId" params={{ eventId: event.id }}>审核</Link></Button>
                       <Button asChild variant="outline" size="sm"><Link to="/club/events/$eventId" params={{ eventId: event.id }}><Pencil className="size-3.5" />编辑</Link></Button>
+                      {cancelled ? (
+                        <span />
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-danger"
+                          onClick={() => {
+                            setCancelId(null);
+                            setConfirmId(event.id);
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                          删除
+                        </Button>
+                      )}
                     </div>
                     {cancelled ? null : confirmId === event.id ? (
                       <div className="mt-2 rounded-lg bg-paper px-3 py-2">
@@ -186,20 +201,7 @@ function ClubStudioPage() {
                           </Button>
                         </div>
                       </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-1 w-full text-danger"
-                        onClick={() => {
-                          setCancelId(null);
-                          setConfirmId(event.id);
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                        删除活动
-                      </Button>
-                    )}
+                    ) : null}
                   </li>
                 );
               })}

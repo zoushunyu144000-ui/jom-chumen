@@ -67,6 +67,8 @@ export async function ensureAppSchema() {
       created_at timestamptz not null default now()
     )
   `);
+  await sql.query(`alter table chat_messages add column if not exists reply_to_id text`);
+  await sql.query(`alter table chat_messages add column if not exists edited_at timestamptz`);
   try {
     await sql.query(
       `create unique index if not exists registrations_apply_no_idx on registrations (apply_no) where apply_no is not null`,
