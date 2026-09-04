@@ -1,21 +1,29 @@
+import { forwardRef } from "react";
 import { Calendar, MapPin } from "lucide-react";
 import { TicketQr } from "@/components/ticket-qr";
 import { categoryName, cityName } from "@/lib/catalog";
 import { applyStatusLabel, formatPrice, formatRange, isApplySuccess, paymentLabel } from "@/lib/format";
 import type { TicketRecord } from "@/lib/types";
 
-export function TicketView({ ticket }: { ticket: TicketRecord }) {
+export const TicketView = forwardRef<HTMLElement, { ticket: TicketRecord }>(function TicketView(
+  { ticket },
+  ref,
+) {
   const { event } = ticket;
   const success = isApplySuccess(ticket.paymentStatus) && event.status !== "cancelled";
-  const badge = success ? "报名成功" : applyStatusLabel(ticket.paymentStatus === "cancelled" ? "cancelled" : ticket.paymentStatus);
+  const badge = success
+    ? "报名成功"
+    : applyStatusLabel(ticket.paymentStatus === "cancelled" ? "cancelled" : ticket.paymentStatus);
   return (
-    <article className="overflow-hidden rounded-xl bg-surface shadow-card">
+    <article ref={ref} data-ticket-card="1" className="overflow-hidden rounded-xl bg-surface shadow-card">
       <div className="h-1.5 bg-lime" />
-      <img
-        src={event.coverUrl}
-        alt={event.title}
-        className="aspect-2/1 w-full object-cover"
-      />
+      <div className="relative aspect-2/1 overflow-hidden bg-paper-2">
+        <img
+          src={event.coverUrl}
+          alt=""
+          className="absolute inset-0 size-full object-cover"
+        />
+      </div>
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted">Jom 出门局</p>
@@ -63,11 +71,9 @@ export function TicketView({ ticket }: { ticket: TicketRecord }) {
           </p>
         </div>
         <div className="size-28 overflow-hidden rounded-md bg-paper">
-          {ticket.verifyUrl ? (
-            <TicketQr value={ticket.verifyUrl} className="size-full" />
-          ) : null}
+          {ticket.verifyUrl ? <TicketQr value={ticket.verifyUrl} className="size-full" /> : null}
         </div>
       </div>
     </article>
   );
-}
+});

@@ -6,6 +6,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { listHostEvents } from "@/lib/server/admin";
 import { formatWhen } from "@/lib/format";
 import type { EventRecord } from "@/lib/types";
+import { PageLoading } from "@/components/page-loading";
 
 export const Route = createFileRoute("/manage/")({ component: ManagePage });
 
@@ -20,7 +21,7 @@ function ManagePage() {
       .catch(() => setEvents([]));
   }, [user]);
 
-  if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (isPending) return <PageLoading label="加载中" />;
   if (!user) return <RedirectToSignIn />;
 
   return (
@@ -32,7 +33,7 @@ function ManagePage() {
       <h1 className="font-display text-2xl font-bold tracking-tight">审核后台</h1>
       <p className="mt-1 text-sm text-muted">只处理你发起的活动。同意后才算报名成功。</p>
       {events === null ? (
-        <p className="mt-6 text-sm text-muted">加载中…</p>
+        <PageLoading label="加载活动" compact />
       ) : events.length === 0 ? (
         <p className="mt-8 text-sm text-muted">还没有你发起的局。底部「发布」可以发一场。</p>
       ) : (

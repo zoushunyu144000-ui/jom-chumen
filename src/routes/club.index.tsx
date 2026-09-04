@@ -62,7 +62,7 @@ function ClubStudioPage() {
           <TabsTrigger value="clubs">俱乐部</TabsTrigger>
         </TabsList>
         <TabsContent value="inbox">
-          {inbox === null ? <PageLoading label="拉取申请" /> : inbox.length === 0 ? (
+          {inbox === null ? <PageLoading label="加载申请" compact /> : inbox.length === 0 ? (
             <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card"><p className="font-medium">还没有待确认的申请</p></div>
           ) : (
             <ul className="space-y-2">
@@ -79,7 +79,7 @@ function ClubStudioPage() {
           )}
         </TabsContent>
         <TabsContent value="events">
-          {events === null ? <PageLoading label="拉取活动" /> : events.length === 0 ? (
+          {events === null ? <PageLoading label="加载活动" compact /> : events.length === 0 ? (
             <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card"><p className="font-medium">还没有你发起的局</p></div>
           ) : (
             <ul className="space-y-2">
@@ -107,7 +107,7 @@ function ClubStudioPage() {
           )}
         </TabsContent>
         <TabsContent value="clubs">
-          {clubs === null ? <PageLoading label="拉取俱乐部" /> : clubs.length === 0 ? (
+          {clubs === null ? <PageLoading label="加载俱乐部" compact /> : clubs.length === 0 ? (
             <div className="rounded-xl bg-surface px-4 py-10 text-center shadow-card">
               <p className="font-medium">还没有俱乐部</p>
               <Button asChild className="mt-4"><Link to="/me/club">创建一个</Link></Button>

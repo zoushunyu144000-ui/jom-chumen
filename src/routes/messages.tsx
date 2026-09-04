@@ -53,7 +53,7 @@ function MessagesPage() {
           </ul>
         )
       ) : chats === null ? (
-        <p className="mt-6 text-sm text-muted">加载中…</p>
+        <PageLoading label="加载私信" compact />
       ) : chats.length === 0 ? (
         <div className="mt-10 rounded-xl bg-surface px-4 py-10 text-center shadow-card">
           <p className="font-medium">还没有私信</p>

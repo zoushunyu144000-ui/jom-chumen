@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { PageLoading } from "@/components/page-loading";
 import {
   cancelEvent,
   getHostEvent,
@@ -80,9 +81,9 @@ function ManageEventPage() {
     [rows, filter],
   );
 
-  if (isPending) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (isPending) return <PageLoading label="加载中" />;
   if (!user) return <RedirectToSignIn />;
-  if (event === undefined) return <main className="p-6 text-sm text-muted">加载中…</main>;
+  if (event === undefined) return <PageLoading label="打开审核" />;
   if (!event) {
     return (
       <main className="px-4 py-16 text-center">
@@ -241,7 +242,7 @@ function ManageEventPage() {
       </div>
 
       {rows === null ? (
-        <p className="mt-6 text-sm text-muted">加载中…</p>
+        <PageLoading label="加载申请" compact />
       ) : shown.length === 0 ? (
         <p className="mt-8 text-sm text-muted">这一栏还没有申请。</p>
       ) : (

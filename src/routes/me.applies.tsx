@@ -6,6 +6,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getTicketByCode, listMyApplications } from "@/lib/server/events";
 import { useAppStore } from "@/lib/store";
 import type { TicketRecord } from "@/lib/types";
+import { PageLoading } from "@/components/page-loading";
 
 export const Route = createFileRoute("/me/applies")({ component: AppliesPage });
 
@@ -55,7 +56,7 @@ function AppliesPage() {
         <p className="mt-1 text-sm text-muted">提交不等于成功，管理员同意后才会出票。</p>
       </header>
       {rows === null ? (
-        <p className="mt-6 text-sm text-muted">加载中…</p>
+        <PageLoading label="加载申请" compact />
       ) : rows.length === 0 ? (
         <p className="mt-8 text-sm text-muted">还没有申请。去发现页报一场。</p>
       ) : (

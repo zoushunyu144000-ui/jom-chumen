@@ -7,6 +7,7 @@ import { EventGallery, eventGalleryImages } from "@/components/event-gallery";
 import { EventPeople } from "@/components/event-people";
 import { EventShareButton } from "@/components/event-share";
 import { GALLERY_CAPTION } from "@/components/event-form";
+import { RoutePending } from "@/components/page-loading";
 import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
 import { formatPrice, formatRange } from "@/lib/format";
@@ -20,6 +21,8 @@ export const Route = createFileRoute("/events/$slug/")({
     return { event };
   },
   staleTime: 15_000,
+  pendingMs: 0,
+  pendingComponent: () => <RoutePending label="打开活动" />,
   head: ({ loaderData }) => {
     const event = loaderData?.event;
     if (!event) return {};
