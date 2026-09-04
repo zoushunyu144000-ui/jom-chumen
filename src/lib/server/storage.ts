@@ -138,7 +138,7 @@ async function putS3(config: StorageConfig, key: string, mime: string, bytes: Bu
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": stamp,
     },
-    body: bytes,
+    body: new Uint8Array(bytes),
   });
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 300);
