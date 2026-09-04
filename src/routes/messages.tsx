@@ -28,7 +28,7 @@ function MessagesPage() {
   return (
     <main className="px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))]">
       <h1 className="font-display text-2xl font-bold tracking-tight">消息</h1>
-      <div className="mt-4 grid grid-cols-2 rounded-full bg-surface p-1 shadow-card">
+      <div className="glass-composer mt-4 grid grid-cols-2 rounded-full p-1">
         <button type="button" onClick={() => setTab("notice")} className={cn("h-9 rounded-full text-sm font-medium", tab === "notice" ? "bg-lime" : "text-muted")}>通知</button>
         <button type="button" onClick={() => setTab("chat")} className={cn("h-9 rounded-full text-sm font-medium", tab === "chat" ? "bg-lime" : "text-muted")}>私信</button>
       </div>

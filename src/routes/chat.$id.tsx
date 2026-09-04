@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, Check, CheckCheck, ImagePlus, Pencil, Reply, Send, Smile, X } from "lucide-react";
+import { ArrowLeft, Camera, Check, CheckCheck, Image as ImageIcon, Pencil, Plus, Reply, Send, Smile, X } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PageLoading } from "@/components/page-loading";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -17,19 +15,16 @@ export const Route = createFileRoute("/chat/$id")({ component: ChatPage });
 
 const EMOJIS = ["😊", "😂", "❤️", "👍", "🙏", "🔥", "✨", "🎉", "👋", "💪", "🤔", "😍", "😅", "🙌", "😎", "💯"];
 
-function useFrameHeight() {
-  const [frame, setFrame] = useState(() => {
-    if (typeof window === "undefined") return { height: 0, top: 0 };
-    const vv = window.visualViewport;
-    return { height: vv?.height ?? window.innerHeight, top: vv?.offsetTop ?? 0 };
-  });
+function useVisualFrame() {
+  const [frame, setFrame] = useState({ height: 0, top: 0, keyboard: false });
   useEffect(() => {
     const apply = () => {
       const vv = window.visualViewport;
-      setFrame({
-        height: vv?.height ?? window.innerHeight,
-        top: vv?.offsetTop ?? 0,
-      });
+      const inner = window.innerHeight;
+      const height = vv?.height ?? inner;
+      const top = vv?.offsetTop ?? 0;
+      const overlap = Math.max(0, inner - height - top);
+      setFrame({ height, top, keyboard: overlap > 60 });
     };
     apply();
     window.visualViewport?.addEventListener("resize", apply);
@@ -37,12 +32,15 @@ function useFrameHeight() {
     window.addEventListener("resize", apply);
     window.addEventListener("orientationchange", apply);
     window.addEventListener("focusin", apply);
+    const onFocusOut = () => window.setTimeout(apply, 80);
+    window.addEventListener("focusout", onFocusOut);
     return () => {
       window.visualViewport?.removeEventListener("resize", apply);
       window.visualViewport?.removeEventListener("scroll", apply);
       window.removeEventListener("resize", apply);
       window.removeEventListener("orientationchange", apply);
       window.removeEventListener("focusin", apply);
+      window.removeEventListener("focusout", onFocusOut);
     };
   }, []);
   return frame;
@@ -51,7 +49,7 @@ function useFrameHeight() {
 function ChatPage() {
   const { id } = Route.useParams();
   const { user, isPending } = useCurrentUserState();
-  const frame = useFrameHeight();
+  const frame = useVisualFrame();
   const [chatId, setChatId] = useState(id);
   const [title, setTitle] = useState("私信");
   const [rows, setRows] = useState<ChatMessage[] | null>(null);
@@ -59,14 +57,29 @@ function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showPlus, setShowPlus] = useState(false);
   const [draft, setDraft] = useState<{ url: string; name: string } | null>(null);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [menu, setMenu] = useState<ChatMessage | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -102,7 +115,24 @@ function ChatPage() {
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [rows, draft, replyTo, showEmoji, frame.height]);
+  }, [rows, draft, replyTo, showEmoji, showPlus, frame.height]);
+
+  function pinComposer() {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.setTimeout(() => {
+      window.scrollTo(0, 0);
+      end.current?.scrollIntoView({ block: "end" });
+    }, 250);
+  }
+
+  function resizeInput() {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+  }
 
   if (isPending) return <PageLoading label="打开私信" />;
   if (!user) return <RedirectToSignIn />;
@@ -123,10 +153,12 @@ function ChatPage() {
       setText("");
       setReplyTo(null);
       setDraft(null);
+      if (inputRef.current) inputRef.current.style.height = "auto";
       const data = await listChatMessages({ data: { chatId } });
       setChatId(data.id);
       setRows(data.messages);
       inputRef.current?.focus();
+      pinComposer();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "发送失败");
     } finally {
@@ -141,13 +173,15 @@ function ChatPage() {
         const compressed = await compressImage(file, { maxEdge: 1200, quality: 0.78, maxChars: 180_000 });
         setDraft({ url: compressed, name: file.name || "image.jpg" });
         setShowEmoji(false);
+        setShowPlus(false);
         return;
       }
       toast.error("现在只支持发图片");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "读取失败");
     } finally {
-      if (fileRef.current) fileRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
+      if (galleryRef.current) galleryRef.current.value = "";
     }
   }
 
@@ -166,18 +200,23 @@ function ChatPage() {
   }
 
   const lastMineId = [...(rows ?? [])].reverse().find((row) => row.mine)?.id;
+  const canSend = !busy && Boolean(text.trim());
 
   return (
     <main
       className="fixed inset-x-0 z-50 mx-auto flex w-full max-w-md flex-col overflow-hidden bg-paper"
-      style={{ top: frame.top, height: frame.height ? `${frame.height}px` : "100dvh" }}
+      style={{
+        top: frame.top,
+        height: frame.height ? `${frame.height}px` : "100dvh",
+      }}
     >
-      <header className="flex shrink-0 items-center gap-1 px-2 py-2">
+      <header className="glass-head flex shrink-0 items-center gap-1 px-2 py-2">
         <Link to="/messages" className="flex size-11 items-center justify-center" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
         <h1 className="truncate font-display text-lg font-semibold">{title}</h1>
       </header>
+
       <div ref={listRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-2">
         {rows === null ? <PageLoading label="加载消息" /> : null}
         {(rows ?? []).map((row) => (
@@ -195,7 +234,11 @@ function ChatPage() {
               <div
                 className={cn(
                   "rounded-2xl text-[15px] leading-snug",
-                  row.kind === "image" ? "overflow-hidden bg-transparent p-0" : row.mine ? "bg-lime px-3 py-1.5" : "bg-surface px-3 py-1.5 shadow-card",
+                  row.kind === "image"
+                    ? "overflow-hidden bg-transparent p-0"
+                    : row.mine
+                      ? "bg-lime px-3 py-1.5"
+                      : "bg-surface px-3 py-1.5 shadow-card",
                 )}
               >
                 {row.kind === "image" ? (
@@ -224,81 +267,183 @@ function ChatPage() {
         <div ref={end} />
       </div>
 
-      {draft ? (
-        <div className="shrink-0 border-t border-line bg-surface px-3 py-2">
-          <div className="flex items-start gap-2">
-            <img src={draft.url} alt="" className="h-20 w-20 rounded-lg object-cover [outline:none]" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">发送这张图？</p>
-              <p className="mt-0.5 truncate text-xs text-muted">{draft.name}</p>
-              <div className="mt-2 flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setDraft(null)}>取消</Button>
-                <Button type="button" size="sm" disabled={busy} onClick={() => void sendDraft()}>
-                  {busy ? "发送中…" : "发送"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {replyTo || editing ? (
-        <div className="flex shrink-0 items-center gap-2 border-t border-line bg-surface px-3 py-2 text-sm">
-          {editing ? <Pencil className="size-4 text-muted" /> : <Reply className="size-4 text-muted" />}
-          <p className="min-w-0 flex-1 truncate text-muted">
-            {editing ? `编辑：${editing.body}` : `回复：${replyTo?.kind === "image" ? "[图片]" : replyTo?.body}`}
-          </p>
-          <button type="button" className="flex size-8 items-center justify-center" onClick={() => { setReplyTo(null); setEditing(null); }} aria-label="取消">
-            <X className="size-4" />
-          </button>
-        </div>
-      ) : null}
-
-      {showEmoji ? (
-        <div className="grid shrink-0 grid-cols-8 gap-1 border-t border-line px-3 py-2">
-          {EMOJIS.map((emo) => (
-            <button
-              key={emo}
-              type="button"
-              className="flex size-9 items-center justify-center text-xl"
-              onClick={() => setText((t) => t + emo)}
-            >
-              {emo}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <form
-        className="flex shrink-0 items-center gap-2 border-t border-line bg-paper px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send("text", text);
+      <div
+        className="relative shrink-0 px-3 pt-1"
+        style={{
+          paddingBottom: frame.keyboard ? 8 : "max(10px, env(safe-area-inset-bottom))",
         }}
       >
-        <label className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface">
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
-          <ImagePlus className="size-4" />
-        </label>
-        <button type="button" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface" onClick={() => setShowEmoji((v) => !v)} aria-label="表情">
-          <Smile className="size-4" />
-        </button>
-        <Input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={editing ? "改这句话…" : "说点什么…"}
-          autoComplete="off"
-          enterKeyHint="send"
-        />
-        <Button type="submit" size="sm" disabled={busy || !text.trim()}>
-          <Send className="size-4" />
-        </Button>
-      </form>
+        {draft ? (
+          <div className="mb-2 flex items-start gap-2">
+            <div className="relative">
+              <img src={draft.url} alt="" className="h-[4.5rem] w-[4.5rem] rounded-2xl object-cover [outline:none]" />
+              <button
+                type="button"
+                className="absolute -right-1.5 -top-1.5 flex size-6 items-center justify-center rounded-full bg-ink text-surface"
+                onClick={() => setDraft(null)}
+                aria-label="去掉这张图"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+            <div className="min-w-0 flex-1 pt-1">
+              <p className="text-sm font-medium">发送这张图？</p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void sendDraft()}
+                className="mt-2 h-8 rounded-full bg-lime px-3 text-sm font-semibold text-ink disabled:opacity-40"
+              >
+                {busy ? "发送中…" : "发送"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {replyTo || editing ? (
+          <div className="glass-sheet mb-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-sm">
+            {editing ? <Pencil className="size-4 text-muted" /> : <Reply className="size-4 text-muted" />}
+            <p className="min-w-0 flex-1 truncate text-muted">
+              {editing ? `编辑：${editing.body}` : `回复：${replyTo?.kind === "image" ? "[图片]" : replyTo?.body}`}
+            </p>
+            <button
+              type="button"
+              className="flex size-8 items-center justify-center"
+              onClick={() => { setReplyTo(null); setEditing(null); }}
+              aria-label="取消"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        ) : null}
+
+        {showPlus ? (
+          <div className="glass-sheet mb-2 w-52 overflow-hidden rounded-2xl">
+            <button
+              type="button"
+              className="flex h-12 w-full items-center gap-3 px-3.5 text-sm font-medium"
+              onClick={() => cameraRef.current?.click()}
+            >
+              <Camera className="size-5" />
+              拍照
+            </button>
+            <button
+              type="button"
+              className="flex h-12 w-full items-center gap-3 px-3.5 text-sm font-medium"
+              onClick={() => galleryRef.current?.click()}
+            >
+              <ImageIcon className="size-5" />
+              相册
+            </button>
+            <button
+              type="button"
+              className="flex h-12 w-full items-center gap-3 px-3.5 text-sm font-medium"
+              onClick={() => {
+                setShowPlus(false);
+                setShowEmoji(true);
+                inputRef.current?.blur();
+              }}
+            >
+              <Smile className="size-5" />
+              表情
+            </button>
+          </div>
+        ) : null}
+
+        {showEmoji ? (
+          <div className="glass-sheet mb-2 grid grid-cols-8 gap-1 rounded-2xl px-2 py-2">
+            {EMOJIS.map((emo) => (
+              <button
+                key={emo}
+                type="button"
+                className="flex size-9 items-center justify-center text-xl"
+                onClick={() => {
+                  setText((t) => t + emo);
+                  requestAnimationFrame(resizeInput);
+                }}
+              >
+                {emo}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <form
+          className="glass-composer flex items-end gap-1.5 rounded-full p-1.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send("text", text);
+          }}
+        >
+          <button
+            type="button"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-paper-2 text-ink"
+            aria-label={showPlus ? "关闭" : "更多"}
+            onClick={() => {
+              setShowPlus((v) => !v);
+              setShowEmoji(false);
+              inputRef.current?.blur();
+            }}
+          >
+            {showPlus ? <X className="size-5" /> : <Plus className="size-5" strokeWidth={2.4} />}
+          </button>
+          <textarea
+            ref={inputRef}
+            value={text}
+            rows={1}
+            enterKeyHint="send"
+            autoComplete="off"
+            autoCapitalize="sentences"
+            placeholder={editing ? "改这句话…" : "说点什么…"}
+            className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-1.5 py-2 text-[15px] leading-snug text-ink outline-none placeholder:text-muted"
+            onChange={(e) => {
+              setText(e.target.value);
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+            }}
+            onFocus={() => {
+              setShowPlus(false);
+              setShowEmoji(false);
+              pinComposer();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send("text", text);
+              }
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!canSend}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-lime text-ink disabled:bg-paper-2 disabled:text-muted"
+            aria-label="发送"
+          >
+            <Send className="size-4" />
+          </button>
+        </form>
+      </div>
+
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => void onFile(e.target.files?.[0])}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => void onFile(e.target.files?.[0])}
+      />
 
       {menu ? (
-        <button type="button" className="fixed inset-0 z-50 flex items-end bg-ink/40" onClick={() => setMenu(null)}>
-          <div className="w-full rounded-t-2xl bg-paper px-4 pb-8 pt-3" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="fixed inset-0 z-50 flex items-end bg-ink/35" onClick={() => setMenu(null)}>
+          <div className="glass-sheet w-full rounded-t-3xl px-4 pb-8 pt-3" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
             <button
               type="button"

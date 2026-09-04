@@ -64,7 +64,7 @@ function ClubDetail() {
         )}
         <Link
           to="/clubs"
-          className="absolute left-3 top-3 flex size-11 items-center justify-center rounded-full bg-paper/90 shadow-card"
+          className="glass-pill absolute left-3 top-3 flex size-11 items-center justify-center rounded-full"
           aria-label="返回"
         >
           <ArrowLeft className="size-5" />

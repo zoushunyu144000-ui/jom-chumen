@@ -102,7 +102,7 @@ function EditEventPage() {
 
   return (
     <main className="pb-10">
-      <header className="sticky top-0 z-20 flex items-center gap-1 bg-paper/95 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
+      <header className="glass-head sticky top-0 z-20 flex items-center gap-1 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <Link to="/club" className="flex size-11 items-center justify-center" aria-label="返回"><ArrowLeft className="size-5" /></Link>
         <h1 className="font-display text-lg font-semibold">编辑活动</h1>
       </header>

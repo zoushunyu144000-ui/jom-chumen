@@ -53,14 +53,14 @@ export function FeedSkeleton({ label = "加载中" }: { label?: string }) {
       </div>
       <div className="mt-4 px-4">
         <div className="overflow-hidden rounded-xl bg-surface shadow-card">
-          <div className="aspect-[4/5] bg-paper-2" />
+          <div className="aspect-[6/5] bg-paper-2" />
         </div>
       </div>
       <div className="mt-6 px-4 space-y-5">
         <div className="h-5 w-24 rounded-md bg-paper-2" />
         {[0, 1].map((i) => (
           <div key={i}>
-            <div className="aspect-[3/4] overflow-hidden rounded-lg bg-paper-2" />
+            <div className="aspect-[6/5] overflow-hidden rounded-xl bg-paper-2" />
             <div className="mt-2.5 h-5 w-3/4 rounded-md bg-paper-2" />
             <div className="mt-2 h-4 w-1/2 rounded-md bg-paper-2" />
           </div>
@@ -76,7 +76,7 @@ export function EventPageSkeleton({ label = "打开活动" }: { label?: string }
       <div className="jom-route-bar" aria-hidden="true">
         <span />
       </div>
-      <div className="aspect-[3/4] bg-paper-2" />
+      <div className="aspect-[6/5] bg-paper-2" />
       <section className="px-4 pt-4">
         <div className="h-3 w-16 rounded-md bg-paper-2" />
         <div className="mt-2 h-8 w-4/5 rounded-md bg-paper-2" />

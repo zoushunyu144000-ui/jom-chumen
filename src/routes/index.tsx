@@ -54,7 +54,7 @@ function Home() {
             onClick={() => setCategory(item.id)}
             className={cn(
               "h-9 shrink-0 rounded-full px-3.5 text-sm font-medium transition-colors duration-150",
-              category === item.id ? "bg-ink text-lime" : "bg-surface text-ink-soft shadow-card",
+              category === item.id ? "bg-ink text-lime" : "glass-pill text-ink-soft",
             )}
           >
             {item.name}

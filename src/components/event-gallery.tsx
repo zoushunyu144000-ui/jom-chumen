@@ -15,7 +15,7 @@ export function EventGallery({
   const pics = images.filter(Boolean);
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(() => new Set());
-  const [ratio, setRatio] = useState(1.25);
+  const [ratio, setRatio] = useState(1.1);
   const scroller = useRef<HTMLDivElement>(null);
   if (pics.length === 0) return null;
 
@@ -47,7 +47,7 @@ export function EventGallery({
         ref={scroller}
         onScroll={onScroll}
         className="flex w-full max-w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ aspectRatio: `1 / ${clampCoverRatio(ratio)}` }}
+        style={{ aspectRatio: `1 / ${clampCoverRatio(ratio, 0.78, 1.16)}` }}
         aria-label={pics.length > 1 ? `${alt}，共 ${pics.length} 张照片，可左右滑动` : alt}
       >
         {pics.map((src, i) => (
@@ -63,7 +63,7 @@ export function EventGallery({
               <img
                 src={src}
                 alt={i === 0 ? alt : `${alt} 第 ${i + 1} 张照片`}
-                className="absolute inset-0 size-full object-cover [outline:none]"
+                className="absolute inset-0 size-full object-cover object-center [outline:none]"
                 draggable={false}
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}

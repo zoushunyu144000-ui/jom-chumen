@@ -11,7 +11,7 @@ export function TabsList({
   return (
     <TabsPrimitive.List
       className={cn(
-        "grid h-11 grid-cols-2 rounded-full bg-surface p-1 shadow-card",
+        "grid h-11 grid-cols-2 rounded-full p-1 glass-composer",
         className,
       )}
       {...props}

@@ -13,6 +13,8 @@ const buttonVariants = cva(
         outline:
           "bg-surface text-ink shadow-card hover:bg-paper-2",
         ghost: "bg-transparent text-ink hover:bg-paper-2",
+        danger:
+          "bg-surface text-danger shadow-card hover:bg-paper-2",
       },
       size: {
         sm: "h-9 px-3 text-sm",

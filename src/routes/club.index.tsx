@@ -146,7 +146,7 @@ function ClubStudioPage() {
                 const pending = pendingByEvent.get(event.id) ?? 0;
                 const cancelled = event.status === "cancelled";
                 return (
-                  <li key={event.id} className="rounded-xl bg-surface p-2 shadow-card">
+                  <li key={event.id} className="rounded-xl bg-surface p-2.5 shadow-card">
                     <Link to="/events/$slug" params={{ slug: event.slug }} className="flex gap-3">
                       <img src={event.coverUrl} alt="" className="size-14 rounded-md object-cover" />
                       <div className="min-w-0 flex-1">
@@ -162,9 +162,8 @@ function ClubStudioPage() {
                         <span />
                       ) : (
                         <Button
-                          variant="ghost"
+                          variant="danger"
                           size="sm"
-                          className="text-danger"
                           onClick={() => {
                             setCancelId(null);
                             setConfirmId(event.id);

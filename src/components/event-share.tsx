@@ -39,7 +39,7 @@ export function EventShareButton({ event }: { event: Pick<EventRecord, "slug" | 
       type="button"
       onClick={() => void share()}
       disabled={busy}
-      className="flex size-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-card"
+      className="glass-pill flex size-11 items-center justify-center rounded-full text-ink"
       aria-label="分享活动"
     >
       <Share2 className="size-5" />

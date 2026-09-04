@@ -54,11 +54,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className={hideNav ? undefined : "pb-24"}>{children}</div>
         {hideNav ? null : (
           <nav className="fixed inset-x-0 bottom-0 z-40">
-            <div className="relative mx-auto grid max-w-md grid-cols-5 border-t border-line bg-paper pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
+            <div className="glass-nav relative mx-auto grid max-w-md grid-cols-5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
               <Tab to="/" label="发现" icon={Compass} active={pathname === "/"} />
               <Tab to="/club" label="俱乐部" icon={Users} active={clubActive} badge={pending} />
               <Link to="/me/events/new" preload={false} aria-label="发布活动" className="relative flex flex-col items-center">
-                <span className="-mt-7 flex size-14 items-center justify-center rounded-full bg-lime text-ink shadow-card">
+                <span className="-mt-7 flex size-14 items-center justify-center rounded-full bg-lime text-ink shadow-[inset_0_1px_0_rgb(255_255_255_/_0.55),0_10px_24px_-10px_rgb(18_20_16_/_0.45)]">
                   <Plus className="size-7" strokeWidth={2.5} />
                 </span>
                 <span className="mt-1 text-[11px] font-medium text-ink">发布</span>

@@ -15,7 +15,7 @@ export function CityBar({
   const setQuery = useAppStore((s) => s.setQuery);
 
   return (
-    <header className="sticky top-0 z-20 bg-paper/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
+    <header className="glass-head sticky top-0 z-20 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
       <div className="flex items-center gap-3">
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="font-display text-2xl font-extrabold tracking-tight">
@@ -26,7 +26,7 @@ export function CityBar({
         <div className="ml-auto flex items-center gap-1">
           <Link
             to="/city"
-            className="flex h-11 max-w-40 items-center gap-1 rounded-full bg-surface px-3 text-sm font-medium shadow-card"
+            className="glass-pill flex h-11 max-w-40 items-center gap-1 rounded-full px-3 text-sm font-medium"
           >
             <span className="truncate">{placeChip(place)}</span>
             <ChevronDown className="size-4 shrink-0 text-muted" />
@@ -34,7 +34,7 @@ export function CityBar({
           <button
             type="button"
             onClick={onToggleSearch}
-            className="flex size-11 items-center justify-center rounded-full bg-surface shadow-card"
+            className="glass-pill flex size-11 items-center justify-center rounded-full"
             aria-label="搜索"
           >
             {searching ? <X className="size-4" /> : <Search className="size-4" />}
@@ -47,7 +47,7 @@ export function CityBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="搜活动、场地、发起人"
-          className="mt-3 h-11 w-full rounded-md bg-surface px-3 text-sm shadow-card outline-none placeholder:text-muted"
+          className="glass-composer mt-3 h-11 w-full rounded-full px-4 text-sm outline-none placeholder:text-muted"
         />
       ) : null}
     </header>

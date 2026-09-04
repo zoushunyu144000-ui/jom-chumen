@@ -1,9 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** height / width. Portrait 4:5 = 1.25, 3:4 = 1.33; landscape 16:9 ≈ 0.56, 4:3 ≈ 0.75. */
-export function clampCoverRatio(heightOverWidth: number, min = 0.56, max = 1.7) {
-  if (!Number.isFinite(heightOverWidth) || heightOverWidth <= 0) return 1.25;
+/**
+ * height / width.
+ * Feed cards stay in a compact 4:3–6:5 window so tall posters
+ * crop instead of growing a black letterbox.
+ */
+export function clampCoverRatio(heightOverWidth: number, min = 0.75, max = 1.16) {
+  if (!Number.isFinite(heightOverWidth) || heightOverWidth <= 0) return 1.1;
   return Math.min(max, Math.max(min, heightOverWidth));
 }
 
@@ -12,9 +16,9 @@ export function CoverFrame({
   alt,
   className,
   children,
-  minRatio = 0.56,
-  maxRatio = 1.7,
-  fallbackRatio = 1.25,
+  minRatio = 0.75,
+  maxRatio = 1.16,
+  fallbackRatio = 1.1,
   onRatio,
 }: {
   src?: string;
@@ -38,7 +42,7 @@ export function CoverFrame({
         <img
           src={src}
           alt={alt}
-          className="absolute inset-0 size-full object-cover [outline:none]"
+          className="absolute inset-0 size-full object-cover object-center [outline:none]"
           loading="lazy"
           decoding="async"
           onLoad={(e) => {

@@ -83,7 +83,7 @@ function EventDetail() {
     <main className="pb-28">
       <div className="relative">
         <EventGallery images={images.length ? images : [event.coverUrl]} alt={event.title} />
-        <Link to="/" className="absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-card" aria-label="返回">
+        <Link to="/" className="glass-pill absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-ink" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
         <div className="absolute right-3 top-3 z-10">
@@ -153,7 +153,7 @@ function EventDetail() {
           <EventShareButton event={event} />
         </div>
       </section>
-      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 border-t border-line bg-paper/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+      <div className="glass-nav fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div>
           <p className="font-display text-xl font-bold tabular-nums leading-none">{priceLabel}</p>
           <p className="mt-1 text-[11px] text-muted">{apply ? "已报名" : soldOut ? "名额已满" : `已报 ${event.booked}/${event.capacity}`}</p>
