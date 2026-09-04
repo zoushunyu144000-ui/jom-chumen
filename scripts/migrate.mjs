@@ -81,7 +81,14 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[migrate] failed:", err?.message || err);
+  const message = String(err?.message || err);
+  const quota =
+    err?.code === "53000" || /data transfer quota|exceeded the data transfer/i.test(message);
+  if (quota) {
+    console.error("[migrate] skipped — database transfer quota exceeded; schema left as-is.");
+    process.exit(0);
+  }
+  console.error("[migrate] failed:", message);
   // pg errors carry the context needed to debug a bad SQL file.
   for (const key of ["code", "detail", "hint", "position", "where"]) {
     if (err?.[key] != null) console.error(`[migrate]   ${key}: ${err[key]}`);
