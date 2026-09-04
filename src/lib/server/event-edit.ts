@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
+import { requireManageClub, requireManageEvent } from "@/lib/server/access";
 import { ensureAppSchema } from "@/lib/server/schema";
 import { currencyForCity } from "@/lib/catalog";
 import { mapEvent, type EventRow } from "@/lib/server/events";
@@ -20,6 +21,7 @@ export const getEditEvent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     await ensureAppSchema();
+    await requireManageEvent(context.userId, data.eventId);
     const sql = await getSql();
     const rows = await sql.query<EventRow>(
       `select e.id, e.slug, e.title, e.subtitle, e.category, e.city, e.venue, e.address,
@@ -29,9 +31,8 @@ export const getEditEvent = createServerFn({ method: "POST" })
               e.whatsapp, e.wechat_qr, e.alipay_qr, e.tng_qr
        from events e
        where e.id = $1
-         and (e.user_id = $2 or e.club_id in (select club_id from club_members where user_id = $2))
        limit 1`,
-      [data.eventId, context.userId],
+      [data.eventId],
     );
     if (!rows[0]) return null;
     const event = mapEvent(rows[0]);
@@ -66,6 +67,8 @@ export const saveEventEdits = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     await ensureAppSchema();
+    await requireManageEvent(context.userId, data.eventId);
+    await requireManageClub(context.userId, data.clubId);
     const sql = await getSql();
     const owned = await sql<{ id: string; booked: number }>`
       select e.id, coalesce(r.n, 0)::int as booked
@@ -75,7 +78,6 @@ export const saveEventEdits = createServerFn({ method: "POST" })
         where payment_status in ('approved','paid') group by event_id
       ) r on r.event_id = e.id
       where e.id = ${data.eventId}
-        and (e.user_id = ${context.userId} or e.club_id in (select club_id from club_members where user_id = ${context.userId}))
       limit 1
     `;
     if (!owned[0]) throw new Error("没有这场活动");

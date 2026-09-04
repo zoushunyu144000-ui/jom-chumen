@@ -16,3 +16,7 @@ export function eventShareUrl(slug: string) {
 export function eventOgImageUrl(slug: string) {
   return `${publicSiteUrl()}/api/og/${slug}?v=7`;
 }
+
+export function ticketVerifyUrl(token: string) {
+  return `${publicSiteUrl()}/verify/${encodeURIComponent(token)}`;
+}

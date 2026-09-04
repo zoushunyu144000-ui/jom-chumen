@@ -1,4 +1,5 @@
 import { useState } from "react";
+import QRCode from "qrcode";
 import { toast } from "sonner";
 import { TicketView } from "@/components/ticket-view";
 import { Button } from "@/components/ui/button";
@@ -65,34 +66,20 @@ function roundRect(
   ctx.closePath();
 }
 
-function drawQr(ctx: CanvasRenderingContext2D, seed: string, x: number, y: number, size: number) {
-  const n = 21;
-  const cell = size / n;
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
+async function drawQr(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number) {
   ctx.fillStyle = SURFACE;
   ctx.fillRect(x, y, size, size);
-  ctx.fillStyle = INK;
-  for (let row = 0; row < n; row += 1) {
-    for (let col = 0; col < n; col += 1) {
-      const finder =
-        (col < 7 && row < 7) || (col >= n - 7 && row < 7) || (col < 7 && row >= n - 7);
-      let on = false;
-      if (finder) {
-        const lx = col < 7 ? col : col >= n - 7 ? col - (n - 7) : col;
-        const ly = row < 7 ? row : row - (n - 7);
-        const ring = lx === 0 || ly === 0 || lx === 6 || ly === 6;
-        const core = lx >= 2 && lx <= 4 && ly >= 2 && ly <= 4;
-        on = ring || core;
-      } else {
-        on = ((h >>> ((row * n + col) % 31)) & 1) === 1;
-      }
-      if (on) ctx.fillRect(x + col * cell, y + row * cell, cell, cell);
-    }
-  }
+  if (!value) return;
+  const dataUrl = await QRCode.toDataURL(value, {
+    margin: 1,
+    width: Math.round(size * 2),
+    errorCorrectionLevel: "M",
+    color: { dark: INK, light: SURFACE },
+  });
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  ctx.drawImage(img, x, y, size, size);
 }
 
 export async function drawPaperTicket(ticket: TicketRecord) {
@@ -109,8 +96,8 @@ export async function drawPaperTicket(ticket: TicketRecord) {
 
   const measure = document.createElement("canvas").getContext("2d");
   if (!measure) throw new Error("无法生图");
-  const titleLines = wrapLines(measure, ticket.event.title, cardW - pad * 2, titleFont);
-  const venueLines = wrapLines(measure, ticket.event.venue, cardW - pad * 2, bodyFont);
+  const titleLines = wrapLines(measure, ticket.event.title, cardW - pad * 2, titleFont).slice(0, 3);
+  const venueLines = wrapLines(measure, ticket.event.venue, cardW - pad * 2, bodyFont).slice(0, 2);
 
   const cover = await loadCover(ticket.event.coverUrl);
 
@@ -168,6 +155,9 @@ export async function drawPaperTicket(ticket: TicketRecord) {
     ctx.fillRect(cardX, coverTop, cardW, coverH);
     ctx.fillStyle = LIME;
     ctx.fillRect(cardX, coverTop + coverH - 10, cardW, 10);
+    ctx.fillStyle = INK;
+    ctx.font = `700 42px ${FONT}`;
+    ctx.fillText("Jom 出门局", textX, coverTop + coverH / 2);
   }
   ctx.restore();
 
@@ -249,7 +239,7 @@ export async function drawPaperTicket(ticket: TicketRecord) {
   ctx.font = `600 26px ui-monospace, SFMono-Regular, Menlo, monospace`;
   ctx.fillText(ticket.applyNo || ticket.code, textX, stubTop + 274);
 
-  drawQr(ctx, ticket.code, cardX + cardW - pad - qrSize, stubTop + 36, qrSize);
+  await drawQr(ctx, ticket.verifyUrl, cardX + cardW - pad - qrSize, stubTop + 36, qrSize);
 
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("生图失败"))), "image/jpeg", 0.92);

@@ -18,7 +18,7 @@
 | 消息 | 表 `messages`（通知）+ `chats` / `chat_messages`（私聊）。不是 WhatsApp Business API |
 | 队列 / Redis / S3 | 没有 |
 
-Schema 来源：`migrations/0001_auth.sql` … `0005_event_geo.sql`，以及 `ensureAppSchema()` 里的幂等 `alter table`（性别、退款、gallery_count、chat、club_members）。新字段优先走 migration 文件。
+Schema 来源：`migrations/0001_auth.sql` … `0006_p0_ops.sql`，以及 `ensureAppSchema()` 里的幂等 `alter table`。新字段优先走 migration 文件。生产（`VERCEL_ENV=production`）没有 `DATABASE_URL` 会直接失败，不会静默用 PGLite。
 
 ## 库表
 
@@ -28,10 +28,11 @@ Schema 来源：`migrations/0001_auth.sql` … `0005_event_geo.sql`，以及 `en
 
 **业务（snake_case）**
 
-- `clubs`：主办人的俱乐部。`user_id` = 创建者
-- `club_members`：创建者 + 被邀请的管理员。粉丝加入/退出/列表还没有
-- `events`：活动。`user_id` 主办，`club_id` 所属俱乐部。`open` 控制是否还收申请。收款码和 WhatsApp 冗余在活动行上（发活动时从 `host_settings` 拷过来）。有 `refund_hours` / `refund_fee_percent` / `gallery_count`
-- `registrations`：报名。`payment_status`、`apply_no`、手机、微信/WhatsApp、人数、金额、`refund_status`
+- `clubs`：主办人的俱乐部。`user_id` = 主人。独立 `avatar_url` + 横向 `cover_url`
+- `club_members`：主人 / 主理人。粉丝加入/退出/列表还没有
+- `events`：活动。`user_id` 主办，`club_id` 所属俱乐部。`status`：`draft/published/closed/cancelled/archived`。`open` 控制是否还收申请。收款码和 WhatsApp 冗余在活动行上（发活动时从 `host_settings` 拷过来）。有 `refund_hours` / `refund_fee_percent` / `gallery_count`
+- `apply_counters`：每日报名号原子计数（`HD-YYYYMMDD-NNN`）
+- `registrations`：报名。`payment_status`、`apply_no`（唯一）、`verify_token`（高随机验票）、手机、微信/WhatsApp、人数、金额、`refund_status`、`cancelled_at` / `checked_in_at`
 - `profiles`：展示名、头像、标签、`gender`
 - `host_settings`：主办人默认 WhatsApp 和三张收款码
 - `messages`：站内通知
@@ -46,18 +47,19 @@ Schema 来源：`migrations/0001_auth.sql` … `0005_event_geo.sql`，以及 `en
 
 | 模块 | 函数 |
 | --- | --- |
-| events / event-public / event-cards | 列表、详情（轻量，照片走 `/api/media`）、报名、查申请、票 |
-| register | `createLightRegistration`（须登录） |
-| clubs / host-lists | 俱乐部、我的局、工作台列表 |
-| admin | 审报名、下架、导出 |
+| events / event-public / event-cards | 列表、详情（轻量，照片走 `/api/media`）。查申请/票必须登录且只能看自己的 |
+| register | `createLightRegistration`（须登录；TNG / 现金 / 免费） |
+| clubs / host-lists / access | 俱乐部、主人/主理人权限、工作台列表 |
+| admin | 审报名、撤票、取消活动、下架、导出 |
+| verify | 公共验票 `/verify/<token>`；核销须主办权限 |
 | event-edit / event-policy | 改活动、退款规则 |
 | profile / gender | 资料、收款设置、注册性别 |
 | people | 报名者头像、个人主页 |
-| chat | 私聊、俱乐部聊、邀请管理员 |
+| chat | 私聊、俱乐部聊、邀请管理员。已有 chat ID 不会自动加人 |
 | messages | 通知列表 |
 | refund / apply-view | 申请退款、待确认页 |
 
-权限：主办人或 `club_members` 里的管理员可改活动 / 审报名。没有平台超管。粉丝成员流未做。
+权限：统一 `canManageClub` / `canManageEvent` / `isClubOwner`。主理人可改资料、发活动、审报名、撤票。只有主人能转让/移除主理人。粉丝成员流未做。
 
 报名同意后才把 `payment_status` 设为 `approved`，并给申请人推一条站内信。拒绝必须填原因。
 
@@ -78,6 +80,7 @@ Google 登录要站点自己的 `GOOGLE_CLIENT_*`。**换域名后 OAuth 会断�
 2. 用户上传图以 Data URL 进 Postgres，体积和备份都会炸（页面已改 URL 读取，库还没迁对象存储）
 3. 没有对象存储、没有 CDN 私有图
 4. 没有真正的支付对账
+5. 没有对象存储（R2/S3）。私信/封面仍可能是压缩后的 Data URL
 5. 没有短信 / WhatsApp 官方通知，只有站内信 + `wa.me` 链接
 6. 报名号序号用 `count(*)`，并发会撞号
 7. 活动 `city` 仍是五个枚举，和全世界城市选择器不一致

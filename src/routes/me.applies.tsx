@@ -19,11 +19,13 @@ function AppliesPage() {
     let cancelled = false;
     async function load() {
       const codes = [...new Set([...applyCodes, ...ticketCodes])];
-      const fromStore = await Promise.all(
-        codes.map((code) => getTicketByCode({ data: { code } })),
-      );
+      const fromStore: TicketRecord[] = [];
       let mine: TicketRecord[] = [];
       if (user) {
+        const found = await Promise.all(
+          codes.map((code) => getTicketByCode({ data: { code } }).catch(() => null)),
+        );
+        fromStore.push(...found.filter((row): row is TicketRecord => Boolean(row)));
         try {
           mine = await listMyApplications();
         } catch {

@@ -8,9 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
+  cancelEvent,
   getHostEvent,
   listApplications,
   reviewApplication,
+  revokeTicket,
   setEventOpen,
   type ApplyRow,
 } from "@/lib/server/admin";
@@ -51,6 +53,10 @@ function ManageEventPage() {
   const [noteId, setNoteId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   async function reload() {
     const [ev, list] = await Promise.all([
@@ -162,12 +168,12 @@ function ManageEventPage() {
       </Link>
       <h1 className="font-display text-xl font-bold tracking-tight">{event.title}</h1>
       <p className="mt-1 text-sm text-muted">
-        已录 {event.booked}/{event.capacity} · {event.open ? "开放申请" : "已下架"}
+        已录 {event.booked}/{event.capacity} · {event.status === "cancelled" ? "已取消" : event.open ? "开放申请" : "已下架"}
       </p>
       <p className="mt-2 text-sm text-muted">点同意才算报名成功，不会自动检测付款。</p>
 
       <div className="mt-3 flex gap-2">
-        <Button variant="outline" className="flex-1" onClick={() => void toggleOpen()} disabled={busy}>
+        <Button variant="outline" className="flex-1" onClick={() => void toggleOpen()} disabled={busy || event.status === "cancelled"}>
           {event.open ? "停止报名" : "重新开放"}
         </Button>
         <Button asChild variant="outline" className="flex-1">
@@ -179,6 +185,44 @@ function ManageEventPage() {
       <Button variant="ink" className="mt-2 w-full" onClick={exportApproved}>
         导出已成功
       </Button>
+      {event.status === "cancelled" ? (
+        <p className="mt-3 rounded-xl bg-surface p-3 text-sm text-danger shadow-card">
+          活动已取消{event.cancelReason ? `：${event.cancelReason}` : ""}
+        </p>
+      ) : cancelOpen ? (
+        <div className="mt-3 space-y-2 rounded-xl bg-surface p-3 shadow-card">
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="取消原因（必填，会通知所有报名者）"
+            rows={2}
+          />
+          <Button
+            variant="ink"
+            className="w-full"
+            disabled={busy || cancelReason.trim().length < 2}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await cancelEvent({ data: { eventId, reason: cancelReason.trim() } });
+                toast.success("活动已取消");
+                setCancelOpen(false);
+                await reload();
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "取消失败");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            确认取消活动
+          </Button>
+        </div>
+      ) : (
+        <Button variant="ghost" className="mt-2 w-full" onClick={() => setCancelOpen(true)}>
+          取消这场活动
+        </Button>
+      )}
 
       <div className="mt-4 flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FILTERS.map((item) => (
@@ -230,6 +274,9 @@ function ManageEventPage() {
               {row.rejectReason ? (
                 <p className="mt-1 text-xs text-danger">原因：{row.rejectReason}</p>
               ) : null}
+              {row.cancelReason ? (
+                <p className="mt-1 text-xs text-danger">取消：{row.cancelReason}</p>
+              ) : null}
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {row.status === "pending" ? (
@@ -247,6 +294,7 @@ function ManageEventPage() {
                       onClick={() => {
                         setRejectId(row.id);
                         setNoteId(null);
+                        setRevokeId(null);
                         setReason("");
                       }}
                     >
@@ -260,6 +308,7 @@ function ManageEventPage() {
                   onClick={() => {
                     setNoteId(row.id);
                     setRejectId(null);
+                    setRevokeId(null);
                     setNote(row.adminNote);
                   }}
                 >
@@ -267,6 +316,18 @@ function ManageEventPage() {
                 </Button>
                 {row.status === "approved" ? (
                   <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setRevokeId(row.id);
+                        setRevokeReason("");
+                        setRejectId(null);
+                        setNoteId(null);
+                      }}
+                    >
+                      取消票
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -315,6 +376,37 @@ function ManageEventPage() {
                     onClick={() => void act(row.id, "reject")}
                   >
                     确认拒绝
+                  </Button>
+                </div>
+              ) : null}
+
+              {revokeId === row.id ? (
+                <div className="mt-3 space-y-2">
+                  <Textarea
+                    value={revokeReason}
+                    onChange={(e) => setRevokeReason(e.target.value)}
+                    placeholder="取消票的原因（必填）"
+                    rows={2}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ink"
+                    disabled={busy || revokeReason.trim().length < 2}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        await revokeTicket({ data: { id: row.id, reason: revokeReason.trim() } });
+                        toast.success("票已取消");
+                        setRevokeId(null);
+                        await reload();
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "取消失败");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    确认取消票
                   </Button>
                 </div>
               ) : null}

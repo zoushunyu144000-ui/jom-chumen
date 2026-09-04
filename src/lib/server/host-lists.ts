@@ -41,6 +41,8 @@ export const listHostEventCards = createServerFn({ method: "POST" })
         group by event_id
       ) r on r.event_id = e.id
       where e.user_id = ${context.userId}
+         or e.club_id in (select id from clubs where user_id = ${context.userId})
+         or e.club_id in (select club_id from club_members where user_id = ${context.userId} and role in ('owner', 'admin'))
       order by e.starts_at desc
     `;
     return rows.map((row) => ({

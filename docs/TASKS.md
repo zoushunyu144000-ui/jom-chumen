@@ -1,6 +1,6 @@
 # 任务看板（GitHub Issue 镜像）
 
-更新：2026-09-03 晚。活任务以 [GitHub Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues) 为准。今日对照：**[#2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)**。登录环境变量：**[#1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)**。
+更新：2026-09-04。活任务以 [GitHub Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues) 为准。今日对照：**[#2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)**。登录环境变量：**[#1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)**。
 
 状态：`todo` / `in-progress` / `done` / `blocked`
 
@@ -14,30 +14,30 @@
 - T01 持久 Postgres — **done**（正式站 `jom-chumen-2026` 已接 Neon；不要再把生产指到 PGLite）
 - T07 主办人真实收款码 — **done**（发活动前必须 WhatsApp + TNG 真码；报名页可保存付款码）
 
-## 今天（2026-09-03）产品改动 — 代码已在 main
+## 今天（2026-09-04）P0 代码
 
-详见 [Issue 进度](https://github.com/zoushunyu144000-ui/jom-chumen/issues)。预览和 GitHub 已齐；**正式站域名被 Vercel 免费额度拦住，还没吃到这批代码。**
+GitHub #3–#6 产品代码已合上（真 QR、俱乐部后台、私信权限、查票登录）。**对象存储还没接**（没有 R2 密钥）。正式站仍被 Vercel Hobby 额度拦住。
 
 ## P0 上线前
 
 ### T04 生产域名与环境变量
 - 状态：in-progress
 - 正式站能打开、库是 Neon。还差：确认 `BETTER_AUTH_URL` / `BETTER_AUTH_SECRET` / 邮箱登录测通。
-- **blocked：** 米色纸票海报要等 Vercel Hobby 部署额度重置（约 2026-09-04 16:13 马来西亚时间）才能打到 `https://jom-chumen-2026.vercel.app`。
+- **blocked：** 米色纸票海报 + 本轮 P0 要等 Vercel Hobby 部署额度重置（约 2026-09-04 16:13 马来西亚时间）才能打到 `https://jom-chumen-2026.vercel.app`。
 
 ### T02 图片对象存储
 - 状态：todo
-- 详情页已改成 `/api/media/...` 按需读，不再把整张图塞进页面 JSON。库里仍可能是 Data URL。上 S3/R2，库只存 URL。
+- 详情页走 `/api/media/...`。私信图限制约 180KB。还没有 R2/S3 密钥，库里仍可能是 Data URL。
 
 ### T03 报名号并发
-- 状态：todo
-- `HD-YYYYMMDD-NNN` 现在用 `count(*)+1`，并发会撞。改成序列或唯一约束重试。
+- 状态：done
+- 每日 `apply_counters` 原子 +1，`apply_no` 仍有唯一索引。生产缺 `DATABASE_URL` 时（`VERCEL_ENV=production`）拒绝 PGLite。
 
 ## P1
 
 ### T05 俱乐部成员
 - 状态：in-progress
-- 已有 `club_members`、管理员邀请链接、管理员可审局。还缺：粉丝加入 / 退出 / 公开成员列表。
+- 已有 `club_members`、主人/主理人、邀请链接、转让、撤票、取消活动。还缺：粉丝加入 / 退出 / 公开成员列表。
 
 ### T06 活动城市对齐全世界选择器
 - 状态：todo
@@ -54,7 +54,7 @@
 ## P2
 
 ### T10 评价 / 拉黑 / 举报 — todo
-### T11 多主办人共管俱乐部 — todo（管理员邀请已有雏形）
+### T11 多主办人共管俱乐部 — done（主人/主理人、转让、撤票、取消活动）
 ### T12 地图找局 — todo
 ### T13 英文 / 马来文 — todo
 ### T14 人工退款状态 — in-progress（活动可设退款规则，用户可点申请退款；主办人处理流未完）

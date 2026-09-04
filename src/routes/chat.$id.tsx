@@ -46,16 +46,34 @@ function ChatPage() {
 
   useEffect(() => {
     if (!user) return;
-    listChatMessages({ data: { chatId: id } })
-      .then((data) => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const data = await listChatMessages({ data: { chatId: id } });
+        if (cancelled) return;
         setChatId(data.id);
         setTitle(data.title);
         setRows(data.messages);
-      })
-      .catch((err) => {
+      } catch (err) {
+        if (cancelled) return;
         setRows([]);
         toast.error(err instanceof Error ? err.message : "私信打不开");
-      });
+      }
+    }
+    void load();
+    const tick = window.setInterval(() => {
+      if (document.hidden) return;
+      void load();
+    }, 4000);
+    const onVis = () => {
+      if (!document.hidden) void load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [user, id]);
 
   useEffect(() => {
@@ -86,11 +104,11 @@ function ChatPage() {
     if (!file) return;
     try {
       if (file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
-        const src = await compressImage(file, { maxEdge: 1200, quality: 0.74, maxChars: 280_000 });
+        const src = await compressImage(file, { maxEdge: 1000, quality: 0.7, maxChars: 180_000 });
         await send("image", src, file.name);
         return;
       }
-      if (file.size > 400_000) throw new Error("文件请小于 400KB");
+      if (file.size > 180_000) throw new Error("文件请小于 180KB");
       const src = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ""));
@@ -112,7 +130,7 @@ function ChatPage() {
         <h1 className="truncate font-display text-lg font-semibold">{title}</h1>
       </header>
       <div className="flex-1 space-y-1.5 overflow-y-auto px-3" style={{ paddingBottom: bottom + (showEmoji ? 168 : 88) }}>
-        {rows === null ? <PageLoading label="拉取消息" /> : null}
+        {rows === null ? <PageLoading label="加载消息" /> : null}
         {(rows ?? []).map((row) => (
           <div key={row.id} className={cn("flex", row.mine ? "justify-end" : "justify-start")}>
             <div className={cn("max-w-[78%] rounded-2xl text-[15px] leading-snug", row.kind === "image" ? "overflow-hidden bg-transparent p-0" : row.mine ? "bg-lime px-3 py-1.5" : "bg-surface px-3 py-1.5")}>

@@ -34,7 +34,7 @@ function MessagesPage() {
       </div>
       {tab === "notice" ? (
         rows === null ? (
-          <PageLoading label="拉取通知" />
+          <PageLoading label="加载通知" />
         ) : rows.length === 0 ? (
           <div className="mt-10 rounded-xl bg-surface px-4 py-10 text-center shadow-card">
             <p className="font-medium">还没有通知</p>
@@ -63,9 +63,23 @@ function MessagesPage() {
         <ul className="mt-5 space-y-2">
           {chats.map((chat) => (
             <li key={chat.id}>
-              <Link to="/chat/$id" params={{ id: chat.id }} className="block rounded-xl bg-surface px-3 py-3 shadow-card">
-                <p className="font-medium">{chat.title}</p>
-                <p className="mt-0.5 truncate text-sm text-muted">{chat.last || "点开聊天"}</p>
+              <Link to="/chat/$id" params={{ id: chat.id }} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-3 shadow-card">
+                {chat.avatarUrl ? (
+                  <img src={chat.avatarUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-lime text-sm font-semibold">
+                    {chat.title.slice(0, 1)}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center justify-between gap-2">
+                    <p className="truncate font-medium">{chat.title}</p>
+                    {chat.unread > 0 ? (
+                      <span className="rounded-full bg-ink px-1.5 text-[10px] font-semibold text-lime">{chat.unread > 9 ? "9+" : chat.unread}</span>
+                    ) : null}
+                  </span>
+                  <p className="mt-0.5 truncate text-sm text-muted">{chat.last || "点开聊天"}</p>
+                </span>
               </Link>
             </li>
           ))}

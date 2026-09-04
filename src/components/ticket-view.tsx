@@ -1,11 +1,13 @@
 import { Calendar, MapPin } from "lucide-react";
-import { FakeQr } from "@/components/fake-qr";
+import { TicketQr } from "@/components/ticket-qr";
 import { categoryName, cityName } from "@/lib/catalog";
-import { formatPrice, formatRange, paymentLabel } from "@/lib/format";
+import { applyStatusLabel, formatPrice, formatRange, isApplySuccess, paymentLabel } from "@/lib/format";
 import type { TicketRecord } from "@/lib/types";
 
 export function TicketView({ ticket }: { ticket: TicketRecord }) {
   const { event } = ticket;
+  const success = isApplySuccess(ticket.paymentStatus) && event.status !== "cancelled";
+  const badge = success ? "报名成功" : applyStatusLabel(ticket.paymentStatus === "cancelled" ? "cancelled" : ticket.paymentStatus);
   return (
     <article className="overflow-hidden rounded-xl bg-surface shadow-card">
       <div className="h-1.5 bg-lime" />
@@ -18,7 +20,7 @@ export function TicketView({ ticket }: { ticket: TicketRecord }) {
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted">Jom 出门局</p>
           <span className="rounded-full bg-lime px-2.5 py-0.5 text-xs font-semibold text-ink">
-            报名成功
+            {badge}
           </span>
         </div>
         <p className="mt-2 text-xs font-medium text-muted">
@@ -37,6 +39,9 @@ export function TicketView({ ticket }: { ticket: TicketRecord }) {
             {event.venue}
           </p>
         </div>
+        {!success && ticket.cancelReason ? (
+          <p className="mt-3 text-sm text-danger">{ticket.cancelReason}</p>
+        ) : null}
       </div>
       <div className="relative px-4">
         <div className="ticket-dash h-px" />
@@ -58,7 +63,9 @@ export function TicketView({ ticket }: { ticket: TicketRecord }) {
           </p>
         </div>
         <div className="size-28 overflow-hidden rounded-md bg-paper">
-          <FakeQr seed={ticket.code} className="size-full" />
+          {ticket.verifyUrl ? (
+            <TicketQr value={ticket.verifyUrl} className="size-full" />
+          ) : null}
         </div>
       </div>
     </article>

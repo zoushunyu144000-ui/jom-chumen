@@ -25,12 +25,14 @@ export const CATEGORY_IDS = [
 
 export type CategoryId = (typeof CATEGORY_IDS)[number];
 
-export const PAYMENT_METHODS = ["wechat", "alipay", "tng", "cash"] as const;
-export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export const PAYMENT_METHODS = ["tng", "cash"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number] | "wechat" | "alipay";
 
 export type Currency = "MYR" | "SGD" | "THB";
 
 export type ApplyStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+export type EventStatus = "draft" | "published" | "closed" | "cancelled" | "archived";
 
 export type BodyBlock =
   | { type: "h"; text: string }
@@ -69,10 +71,19 @@ export type EventRecord = {
   clubName: string | null;
   userId: string | null;
   open: boolean;
+  status: EventStatus;
+  cancelReason: string;
   whatsapp: string;
   wechatQr: string;
   alipayQr: string;
   tngQr: string;
+};
+
+export type ClubStaff = {
+  userId: string;
+  name: string;
+  avatarUrl: string;
+  role: "owner" | "admin";
 };
 
 export type ClubRecord = {
@@ -81,9 +92,12 @@ export type ClubRecord = {
   bio: string;
   city: Exclude<CityId, "all">;
   coverUrl: string;
+  avatarUrl: string;
   hostName: string;
   eventCount: number;
   isOwner: boolean;
+  isAdmin: boolean;
+  staff: ClubStaff[];
 };
 
 export type TicketRecord = {
@@ -99,8 +113,10 @@ export type TicketRecord = {
   currency: Currency;
   createdAt: string;
   rejectReason: string;
+  cancelReason: string;
   contactWechat: string;
   contactWhatsapp: string;
+  verifyUrl: string;
   event: EventRecord;
 };
 

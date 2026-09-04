@@ -35,7 +35,7 @@ function ClubDetail() {
   useEffect(() => {
     if (!user) return;
     listMyClubs()
-      .then((rows) => setOwner(rows.some((row) => row.id === club.id)))
+      .then((rows) => setOwner(rows.some((row) => row.id === club.id && (row.isOwner || row.isAdmin))))
       .catch(() => setOwner(false));
   }, [user, club.id]);
 
@@ -71,12 +71,43 @@ function ClubDetail() {
         </Link>
       </div>
       <section className="px-4 pt-4">
-        <p className="text-xs text-muted">{cityName(club.city)}</p>
-        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight">
-          {club.name}
-        </h1>
+        <div className="flex items-start gap-3">
+          {club.avatarUrl ? (
+            <img
+              src={club.avatarUrl}
+              alt=""
+              className="-mt-10 size-16 shrink-0 rounded-2xl border-2 border-paper object-cover shadow-card"
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted">{cityName(club.city)}</p>
+            <h1 className="mt-1 font-display text-2xl font-bold tracking-tight">
+              {club.name}
+            </h1>
+          </div>
+        </div>
         {club.bio ? (
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">{club.bio}</p>
+        ) : null}
+        {club.staff.length ? (
+          <div className="mt-4">
+            <p className="text-xs text-muted">主人 / 主理人</p>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {club.staff.map((person) => (
+                <div key={person.userId} className="flex items-center gap-2">
+                  {person.avatarUrl ? (
+                    <img src={person.avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex size-8 items-center justify-center rounded-full bg-lime text-xs font-semibold">{person.name.slice(0, 1)}</span>
+                  )}
+                  <span>
+                    <p className="text-sm font-medium">{person.name}</p>
+                    <p className="text-[11px] text-muted">{person.role === "owner" ? "主人" : "主理人"}</p>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : null}
         {owner ? (
           <div className="mt-4 grid grid-cols-2 gap-2">

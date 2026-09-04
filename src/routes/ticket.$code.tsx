@@ -1,29 +1,45 @@
-import { Link, createFileRoute, notFound } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, Check } from "lucide-react";
 import { toast } from "sonner";
 import { ShareableTicket } from "@/components/ticket-share";
 import { Button } from "@/components/ui/button";
+import { PageLoading } from "@/components/page-loading";
+import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { applyStatusLabel, isApplySuccess } from "@/lib/format";
 import { getTicketByCode } from "@/lib/server/events";
+import type { TicketRecord } from "@/lib/types";
 
-export const Route = createFileRoute("/ticket/$code")({
-  loader: async ({ params }) => {
-    const ticket = await getTicketByCode({ data: { code: params.code } });
-    if (!ticket) throw notFound();
-    return { ticket };
-  },
-  notFoundComponent: () => (
-    <main className="px-6 py-20 text-center">
-      <p className="font-display text-xl font-semibold">找不到这张票</p>
-      <Link to="/tickets" className="mt-4 inline-block text-sm text-muted underline">打开票夹</Link>
-    </main>
-  ),
-  component: TicketPage,
-});
+export const Route = createFileRoute("/ticket/$code")({ component: TicketPage });
 
 function TicketPage() {
-  const { ticket } = Route.useLoaderData();
-  const success = isApplySuccess(ticket.paymentStatus);
+  const { code } = Route.useParams();
+  const { user, isPending } = useCurrentUserState();
+  const [ticket, setTicket] = useState<TicketRecord | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!user) {
+      if (!isPending) setTicket(null);
+      return;
+    }
+    getTicketByCode({ data: { code } })
+      .then((row) => setTicket(row))
+      .catch(() => setTicket(null));
+  }, [user, isPending, code]);
+
+  if (isPending || ticket === undefined) return <PageLoading label="打开电子票" />;
+  if (!user) return <RedirectToSignIn />;
+  if (!ticket) {
+    return (
+      <main className="px-6 py-20 text-center">
+        <p className="font-display text-xl font-semibold">找不到这张票</p>
+        <Link to="/tickets" className="mt-4 inline-block text-sm text-muted underline">打开票夹</Link>
+      </main>
+    );
+  }
+
+  const success = isApplySuccess(ticket.paymentStatus) && ticket.event.status !== "cancelled";
 
   if (!success) {
     return (
@@ -33,6 +49,7 @@ function TicketPage() {
         </Link>
         <p className="font-display text-lg font-semibold">还没有出票</p>
         <p className="mt-1 text-sm text-muted">当前状态：{applyStatusLabel(ticket.paymentStatus)}。提交申请不等于报名成功。</p>
+        {ticket.cancelReason ? <p className="mt-2 text-sm text-danger">{ticket.cancelReason}</p> : null}
         <Button asChild className="mt-5 w-full">
           <Link to="/apply/$code" params={{ code: ticket.code }}>查看申请与付款指引</Link>
         </Button>

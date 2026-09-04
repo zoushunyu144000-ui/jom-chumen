@@ -144,6 +144,8 @@ type Seed = Omit<
   | "tngQr"
   | "lat"
   | "lng"
+  | "status"
+  | "cancelReason"
 >;
 
 export const EVENT_SEED: Seed[] = [

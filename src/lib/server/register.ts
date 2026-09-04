@@ -3,6 +3,8 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { isRealQr } from "@/lib/pay";
+import { nextApplyNo, makeVerifyToken } from "@/lib/server/apply-no";
+import { ensureAppSchema } from "@/lib/server/schema";
 import { makeCode, makeId } from "@/lib/utils";
 
 export const createLightRegistration = createServerFn({ method: "POST" })
@@ -18,6 +20,7 @@ export const createLightRegistration = createServerFn({ method: "POST" })
     }).parse(data),
   )
   .handler(async ({ context, data }) => {
+    await ensureAppSchema();
     const sql = await getSql();
     const rows = await sql<{
       id: string;
@@ -25,15 +28,17 @@ export const createLightRegistration = createServerFn({ method: "POST" })
       price: string | number;
       currency: string;
       open: boolean | null;
+      status: string | null;
       user_id: string | null;
       tng_qr: string | null;
     }>`
-      select id, title, price, currency, open, user_id,
+      select id, title, price, currency, open, coalesce(status, 'published') as status, user_id,
         case when char_length(coalesce(tng_qr,'')) > 40 then 'yes' else coalesce(tng_qr,'') end as tng_qr
       from events where slug = ${data.slug} limit 1
     `;
     const event = rows[0];
     if (!event) throw new Error("活动不存在");
+    if (event.status === "cancelled") throw new Error("这场局已取消");
     if (event.open === false) throw new Error("这场局已停止报名");
     const phone = data.contactWhatsapp.replace(/\D/g, "");
     if (phone.length < 8 || phone.length > 20) throw new Error("请填写有效 WhatsApp");
@@ -58,19 +63,17 @@ export const createLightRegistration = createServerFn({ method: "POST" })
     if (amount > 0 && method === "free") throw new Error("请选择支付方式");
     const id = makeId("reg");
     const code = makeCode();
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" }).format(new Date());
-    const prefix = `HD-${day.replaceAll("-", "")}-`;
-    const counted = await sql<{ n: number }>`select count(*)::int as n from registrations where apply_no like ${`${prefix}%`}`;
-    const applyNo = `${prefix}${String((counted[0]?.n ?? 0) + 1).padStart(3, "0")}`;
+    const applyNo = await nextApplyNo(sql);
+    const verifyToken = makeVerifyToken();
     await sql`
       insert into registrations (
         id, event_id, code, apply_no, nickname, phone, seats,
         payment_method, payment_status, amount, currency, user_id,
-        contact_wechat, contact_whatsapp
+        contact_wechat, contact_whatsapp, verify_token
       ) values (
         ${id}, ${event.id}, ${code}, ${applyNo}, ${data.nickname}, ${phone}, ${data.seats},
         ${method}, ${"pending"}, ${amount}, ${event.currency}, ${context.userId},
-        ${data.contactWechat}, ${phone}
+        ${data.contactWechat}, ${phone}, ${verifyToken}
       )
     `;
     if (event.user_id) {

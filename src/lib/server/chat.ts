@@ -20,6 +20,8 @@ export type ChatListItem = {
   title: string;
   last: string;
   createdAt: string;
+  avatarUrl: string;
+  unread: number;
 };
 
 async function addMember(chatId: string, userId: string) {
@@ -42,12 +44,21 @@ async function ensureChat(id: string, title: string, clubId?: string) {
   }
 }
 
+async function requireMember(chatId: string, userId: string) {
+  const sql = await getSql();
+  const rows = await sql<{ user_id: string }>`
+    select user_id from chat_members where chat_id = ${chatId} and user_id = ${userId} limit 1
+  `;
+  if (!rows[0]) throw new Error("你不在这个聊天里");
+}
+
 export async function resolveChatId(rawId: string, userId: string) {
   await ensureAppSchema();
   const sql = await getSql();
   if (rawId.startsWith("chat_")) {
-    await ensureChat(rawId, "私信");
-    await addMember(rawId, userId);
+    const exists = await sql<{ id: string }>`select id from chats where id = ${rawId} limit 1`;
+    if (!exists[0]) throw new Error("找不到这个聊天");
+    await requireMember(rawId, userId);
     return rawId;
   }
   if (rawId.startsWith("club_")) {
@@ -81,27 +92,95 @@ export const openClubChat = createServerFn({ method: "POST" })
     return { id, title: "私信" };
   });
 
+export const openDirectChat = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ userId: z.string().min(1) }).parse(data))
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
+    if (data.userId === context.userId) throw new Error("不能给自己发私信");
+    const id = await resolveChatId(data.userId, context.userId);
+    return { id };
+  });
+
+function shortAvatar(src?: string | null) {
+  if (!src || src.startsWith("data:")) return "";
+  return src;
+}
+
 export const listMyChats = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<ChatListItem[]> => {
     await ensureAppSchema();
     const sql = await getSql();
-    const rows = await sql<{ id: string; title: string; created_at: string | Date; last: string | null }>`
-      select c.id, c.title, c.created_at,
+    const rows = await sql<{
+      id: string;
+      title: string;
+      club_id: string | null;
+      club_name: string | null;
+      club_avatar: string | null;
+      club_owner: string | null;
+      created_at: string | Date;
+      last: string | null;
+      last_at: string | Date | null;
+      unread: number | string | null;
+      peer_name: string | null;
+      peer_avatar: string | null;
+    }>`
+      select c.id, c.title, c.club_id, c.created_at,
+        cl.name as club_name, cl.avatar_url as club_avatar, cl.user_id as club_owner,
         (select case when kind = 'text' then body else coalesce(file_name, '附件') end
-           from chat_messages m where m.chat_id = c.id order by created_at desc limit 1) as last
+           from chat_messages m where m.chat_id = c.id order by created_at desc limit 1) as last,
+        (select created_at from chat_messages m where m.chat_id = c.id order by created_at desc limit 1) as last_at,
+        (select count(*)::int from chat_messages m
+           where m.chat_id = c.id and m.user_id <> ${context.userId}
+             and (cm.last_read_at is null or m.created_at > cm.last_read_at)) as unread,
+        (select coalesce(p.display_name, u.name, '私信')
+           from chat_members om
+           left join profiles p on p.user_id = om.user_id
+           left join "user" u on u.id = om.user_id
+           where om.chat_id = c.id and om.user_id <> ${context.userId}
+           limit 1) as peer_name,
+        (select coalesce(p.avatar_url, u.image, '')
+           from chat_members om
+           left join profiles p on p.user_id = om.user_id
+           left join "user" u on u.id = om.user_id
+           where om.chat_id = c.id and om.user_id <> ${context.userId}
+           limit 1) as peer_avatar
       from chats c
       join chat_members cm on cm.chat_id = c.id
+      left join clubs cl on cl.id = c.club_id
       where cm.user_id = ${context.userId}
-      order by c.created_at desc
+      order by coalesce(
+        (select max(created_at) from chat_messages m where m.chat_id = c.id),
+        c.created_at
+      ) desc
       limit 50
     `;
-    return rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      last: (row.last || "").startsWith("data:") ? "[图片]" : (row.last || ""),
-      createdAt: new Date(row.created_at).toISOString(),
-    }));
+    const staffOf = new Set<string>();
+    const clubIds = [...new Set(rows.map((row) => row.club_id).filter(Boolean))] as string[];
+    if (clubIds.length) {
+      const staff = await sql<{ club_id: string }>`
+        select club_id from club_members where user_id = ${context.userId}
+      `;
+      for (const row of staff) staffOf.add(row.club_id);
+    }
+    return rows.map((row) => {
+      const isStaff = Boolean(row.club_id && (row.club_owner === context.userId || staffOf.has(row.club_id)));
+      const title = row.club_id
+        ? (isStaff ? (row.peer_name || row.club_name || row.title) : (row.club_name || row.peer_name || row.title))
+        : (row.peer_name || row.title || "私信");
+      const avatar = row.club_id && !isStaff
+        ? shortAvatar(row.club_avatar)
+        : shortAvatar(row.peer_avatar);
+      const last = (row.last || "").startsWith("data:") ? "[图片]" : (row.last || "");
+      return {
+        id: row.id,
+        title,
+        last,
+        createdAt: new Date(row.last_at || row.created_at).toISOString(),
+        avatarUrl: avatar,
+        unread: Number(row.unread) || 0,
+      };
+    });
   });
 
 export const listChatMessages = createServerFn({ method: "POST" })
@@ -110,13 +189,23 @@ export const listChatMessages = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<{ id: string; title: string; messages: ChatMessage[] }> => {
     const chatId = await resolveChatId(data.chatId, context.userId);
     const sql = await getSql();
-    const chat = await sql<{ title: string }>`select title from chats where id = ${chatId} limit 1`;
+    await sql`update chat_members set last_read_at = now() where chat_id = ${chatId} and user_id = ${context.userId}`;
+    const chat = await sql<{ title: string; club_id: string | null }>`select title, club_id from chats where id = ${chatId} limit 1`;
+    const peer = await sql<{ name: string | null }>`
+      select coalesce(p.display_name, u.name, c.title) as name
+      from chat_members om
+      join chats c on c.id = om.chat_id
+      left join profiles p on p.user_id = om.user_id
+      left join "user" u on u.id = om.user_id
+      where om.chat_id = ${chatId} and om.user_id <> ${context.userId}
+      limit 1
+    `;
     const rows = await sql<{ id: string; user_id: string; kind: string; body: string; file_name: string; created_at: string | Date }>`
       select id, user_id, kind, body, file_name, created_at from chat_messages where chat_id = ${chatId} order by created_at asc limit 200
     `;
     return {
       id: chatId,
-      title: chat[0]?.title || "私信",
+      title: peer[0]?.name || chat[0]?.title || "私信",
       messages: rows.map((row) => ({
         id: row.id, userId: row.user_id, kind: (row.kind as ChatMessage["kind"]) || "text",
         body: row.body, fileName: row.file_name || "", mine: row.user_id === context.userId,
@@ -130,13 +219,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     z.object({
       chatId: z.string().min(1),
       kind: z.enum(["text", "image", "file"]).default("text"),
-      body: z.string().min(1).max(900_000),
+      body: z.string().min(1).max(240_000),
       fileName: z.string().max(80).default(""),
     }).parse(data),
   )
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const chatId = await resolveChatId(data.chatId, context.userId);
+    if (data.kind !== "text" && data.body.startsWith("data:") && data.body.length > 220_000) {
+      throw new Error("图片太大，请发更小的图");
+    }
     const sql = await getSql();
     const recent = await sql<{ user_id: string }>`
       select user_id from chat_messages where chat_id = ${chatId} order by created_at desc limit 2
@@ -146,6 +238,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
     const id = makeId("cm");
     await sql`insert into chat_messages (id, chat_id, user_id, kind, body, file_name) values (${id}, ${chatId}, ${context.userId}, ${data.kind}, ${data.body}, ${data.fileName})`;
+    await sql`update chat_members set last_read_at = now() where chat_id = ${chatId} and user_id = ${context.userId}`;
     return { id, chatId };
   });
 

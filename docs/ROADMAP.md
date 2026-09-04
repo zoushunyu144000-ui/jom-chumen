@@ -1,6 +1,6 @@
 # 任务目标与进度
 
-更新：2026-09-03 晚。今日问题对照：[Issue #2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)。登录环境变量：[Issue #1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)。做完就关 issue，并改这一页。
+更新：2026-09-04。今日问题对照：[Issue #2](https://github.com/zoushunyu144000-ui/jom-chumen/issues/2)。登录环境变量：[Issue #1](https://github.com/zoushunyu144000-ui/jom-chumen/issues/1)。做完就关 issue，并改这一页。
 
 ## 总目标
 
@@ -11,7 +11,7 @@
 ## 线上
 
 - 站点：https://jom-chumen-2026.vercel.app （有 Neon，能报名）
-- GitHub `main`：`09a2619` 起含米色纸票海报
+- GitHub `main`：本轮含 P0（真二维码、俱乐部后台、私信权限、查票登录、报名号原子计数）
 - Vercel 项目：jom-chumen-2026 / zuriel144000
 - **正式站目前仍停在更早的提交**（Hobby 部署次数用完）。重复项目 `jom-chumen-app` / `chumen` 已暂停，避免继续烧额度。
 
@@ -42,6 +42,12 @@
 - [x] 退款规则写在活动上，用户可申请退款
 - [x] 报名者头像条、个人主页
 - [x] 俱乐部管理员邀请链接
+- [x] 主人/主理人可一起改俱乐部和活动；主人可转让、移除主理人
+- [x] 主办可撤票、取消活动（有报名的不硬删）
+- [x] 报名号原子计数，生产禁止 PGLite
+- [x] 查报名/看票必须登录且只能看自己的
+- [x] 电子票真二维码 + `/verify/<token>` 验票
+- [x] 私信不再靠 chat ID 自动加入；列表按最新消息、未读、对方名字
 
 ## 今天还没落地到正式站 / 没做完
 
@@ -50,7 +56,7 @@
 | 米色纸票海报上到 jom-chumen-2026.vercel.app | **blocked** 免费部署额度，约明天 16:13 马时重置后自动再发 |
 | 登录环境变量测通（Issue #1） | in-progress |
 | 图片对象存储（库里不再存 Data URL） | todo |
-| 报名号并发 | todo |
+| 报名号并发 | **done**（原子计数） |
 | 俱乐部粉丝加入/退出/成员列表 | 管理员邀请已有，粉丝流未做 |
 | 申请后 WhatsApp/邮件通知 | todo |
 | 发活动城市对齐全世界选择器 | todo |
@@ -66,7 +72,6 @@
 | 改对 Vercel 登录环境变量并 Redeploy | `BETTER_AUTH_URL` 不能是 example.com |
 | 用邮箱测通 `/login` | 验证 session cookie 落在 vercel.app 域名上 |
 | 图片改对象存储 | Data URL 进 Postgres 会把免费 0.5GB 很快用完 |
-| 报名号并发 | `count(*)+1` 会撞号 |
 
 ### P1 产品完整
 

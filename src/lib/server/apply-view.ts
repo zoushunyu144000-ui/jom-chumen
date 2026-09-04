@@ -6,17 +6,23 @@ import { ensureAppSchema } from "@/lib/server/schema";
 import { authMiddleware } from "@/lib/auth/middleware";
 
 export const getLightTicket = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
   .validator((data: unknown) => z.object({ code: z.string().min(3) }).parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
+    await ensureAppSchema();
     const sql = await getSql();
     const rows = await sql<{
       id: string; code: string; apply_no: string | null; nickname: string; seats: number;
       payment_method: string; payment_status: string; amount: string | number; currency: string;
       event_id: string; refund_status: string | null; reject_reason: string | null;
+      cancel_reason: string | null;
     }>`
       select id, code, apply_no, nickname, seats, payment_method, payment_status, amount, currency,
-             event_id, coalesce(refund_status,'') as refund_status, reject_reason
-      from registrations where code = ${data.code} or apply_no = ${data.code} limit 1
+             event_id, coalesce(refund_status,'') as refund_status, reject_reason,
+             coalesce(cancel_reason,'') as cancel_reason
+      from registrations
+      where user_id = ${context.userId} and (code = ${data.code} or apply_no = ${data.code})
+      limit 1
     `;
     const row = rows[0];
     if (!row) return null;
@@ -33,6 +39,7 @@ export const getLightTicket = createServerFn({ method: "GET" })
       currency: row.currency,
       refundStatus: row.refund_status || "",
       rejectReason: row.reject_reason || "",
+      cancelReason: row.cancel_reason || "",
       event,
     };
   });

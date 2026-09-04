@@ -3,7 +3,9 @@ import { z } from "zod";
 import { EVENT_SEED, CLUB_SEED } from "@/lib/catalog";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { makeCode, makeId, maskPhone } from "@/lib/utils";
+import { ensureVerifyToken, verifyTicketUrl } from "@/lib/server/apply-no";
+import { ensureAppSchema } from "@/lib/server/schema";
+import { maskPhone } from "@/lib/utils";
 import type {
   ApplyStatus,
   BodyBlock,
@@ -11,6 +13,7 @@ import type {
   CityId,
   Currency,
   EventRecord,
+  EventStatus,
   PaymentMethod,
   TicketRecord,
 } from "@/lib/types";
@@ -44,6 +47,8 @@ type EventRow = {
   club_name?: string | null;
   user_id?: string | null;
   open?: boolean | null;
+  status?: string | null;
+  cancel_reason?: string | null;
   whatsapp?: string | null;
   wechat_qr?: string | null;
   alipay_qr?: string | null;
@@ -86,6 +91,7 @@ function mapEvent(row: EventRow): EventRecord {
   } catch {
     highlights = [];
   }
+  const status = (row.status as EventStatus) || (row.open === false ? "closed" : "published");
   return {
     id: row.id,
     slug: row.slug,
@@ -115,7 +121,9 @@ function mapEvent(row: EventRow): EventRecord {
     clubId: row.club_id ?? null,
     clubName: row.club_name ?? null,
     userId: row.user_id ?? null,
-    open: row.open !== false,
+    open: row.open !== false && status !== "cancelled",
+    status,
+    cancelReason: row.cancel_reason || "",
     whatsapp: row.whatsapp || "601135550088",
     wechatQr: row.wechat_qr || "/pay/wechat.svg",
     alipayQr: row.alipay_qr || "/pay/alipay.svg",
@@ -181,6 +189,7 @@ export const listEvents = createServerFn({ method: "GET" })
     const category = (data.category ?? "all") as CategoryId;
     const query = (data.query ?? "").trim().toLowerCase();
     return rows.map(mapEvent)
+      .filter((event) => event.status !== "cancelled")
       .filter((event) => (data.clubId ? event.clubId === data.clubId : true))
       .filter((event) => (city === "all" ? true : event.city === city))
       .filter((event) => (category === "all" ? true : event.category === category))
@@ -200,107 +209,127 @@ export const getEventBySlug = createServerFn({ method: "GET" })
     return rows[0] ? mapEvent(rows[0]) : null;
   });
 
-const createSchema = z.object({
-  slug: z.string().min(1),
-  nickname: z.string().trim().min(1).max(24),
-  seats: z.number().int().min(1).max(4),
-  paymentMethod: z.enum(["wechat", "alipay", "tng", "cash", "free"]),
-  contactWechat: z.string().trim().max(40).default(""),
-  contactWhatsapp: z.string().trim().min(8).max(24).regex(/^[0-9+\-\s]+$/, "invalid whatsapp"),
-});
+type RegRow = {
+  id: string;
+  code: string;
+  apply_no: string | null;
+  nickname: string;
+  phone: string;
+  seats: number;
+  payment_method: string;
+  payment_status: string;
+  amount: string | number;
+  currency: string;
+  created_at: string | Date;
+  event_id: string;
+  user_id?: string | null;
+  reject_reason?: string | null;
+  cancel_reason?: string | null;
+  contact_wechat?: string | null;
+  contact_whatsapp?: string | null;
+  verify_token?: string | null;
+};
 
-export const createRegistration = createServerFn({ method: "POST" })
-  .validator((data: unknown) => createSchema.parse(data))
-  .handler(async ({ data }) => {
-    await ensureSeeded();
-    const sql = await getSql();
-    const rows = await sql.query<EventRow>(`${eventSelect} where e.slug = $1 limit 1`, [data.slug]);
-    const event = rows[0] ? mapEvent(rows[0]) : null;
-    if (!event) throw new Error("活动不存在");
-    if (!event.open) throw new Error("这场局已停止报名");
-    const phone = data.contactWhatsapp.replace(/\D/g, "");
-    if (phone.length < 8 || phone.length > 20) throw new Error("请填写有效 WhatsApp 号码，含国家区号");
-    const dup = await sql<{ id: string }>`select id from registrations where event_id = ${event.id} and regexp_replace(phone, '[^0-9]', '', 'g') = ${phone} and payment_status in ('pending', 'approved', 'paid') limit 1`;
-    if (dup[0]) throw new Error("这个 WhatsApp 已经交过申请，请等审核");
-    const amount = event.price * data.seats;
-    const method = amount <= 0 ? "free" : data.paymentMethod;
-    if (amount > 0 && method === "free") throw new Error("请选择支付方式");
-    const id = makeId("reg");
-    const code = makeCode();
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" }).format(new Date());
-    const prefix = `HD-${day.replaceAll("-", "")}-`;
-    const counted = await sql<{ n: number }>`select count(*)::int as n from registrations where apply_no like ${`${prefix}%`}`;
-    const applyNo = `${prefix}${String((counted[0]?.n ?? 0) + 1).padStart(3, "0")}`;
-    let userId: string | null = null;
-    try {
-      const { getSessionUser } = await import("@/lib/auth/verify.server");
-      userId = (await getSessionUser())?.id ?? null;
-    } catch {
-      userId = null;
-    }
-    await sql`insert into registrations (id, event_id, code, apply_no, nickname, phone, seats, payment_method, payment_status, amount, currency, user_id, contact_wechat, contact_whatsapp) values (${id}, ${event.id}, ${code}, ${applyNo}, ${data.nickname}, ${phone}, ${data.seats}, ${method}, ${"pending"}, ${amount}, ${event.currency}, ${userId}, ${data.contactWechat}, ${phone})`;
-    if (event.userId) {
-      const { pushMessage } = await import("@/lib/server/messages");
-      await pushMessage({ userId: event.userId, title: "新的报名申请", body: `${data.nickname} 申请「${event.title}」，报名号 ${applyNo}`, href: `/manage/${event.id}` });
-    }
-    return { id, code, applyNo, amount, currency: event.currency, paymentMethod: method, paymentStatus: "pending" as const, full: event.remaining < data.seats, event };
-  });
-
-type RegRow = { id: string; code: string; apply_no: string | null; nickname: string; phone: string; seats: number; payment_method: string; payment_status: string; amount: string | number; currency: string; created_at: string | Date; event_id: string; reject_reason?: string | null; contact_wechat?: string | null; contact_whatsapp?: string | null; };
-
-function mapTicket(row: RegRow, event: EventRecord): TicketRecord {
-  return { id: row.id, code: row.code, applyNo: row.apply_no || row.code, nickname: row.nickname, phoneMasked: maskPhone(row.phone), seats: Number(row.seats), paymentMethod: row.payment_method as PaymentMethod | "free", paymentStatus: row.payment_status as ApplyStatus, amount: Number(row.amount) || 0, currency: row.currency as Currency, createdAt: toIso(row.created_at), rejectReason: row.reject_reason || "", contactWechat: row.contact_wechat || "", contactWhatsapp: row.contact_whatsapp || "", event };
+async function mapOwnedTicket(row: RegRow, event: EventRecord): Promise<TicketRecord> {
+  const sql = await getSql();
+  const token = await ensureVerifyToken(sql, row.id, row.verify_token);
+  return {
+    id: row.id,
+    code: row.code,
+    applyNo: row.apply_no || row.code,
+    nickname: row.nickname,
+    phoneMasked: maskPhone(row.phone),
+    seats: Number(row.seats),
+    paymentMethod: row.payment_method as PaymentMethod | "free",
+    paymentStatus: row.payment_status as ApplyStatus,
+    amount: Number(row.amount) || 0,
+    currency: row.currency as Currency,
+    createdAt: toIso(row.created_at),
+    rejectReason: row.reject_reason || "",
+    cancelReason: row.cancel_reason || "",
+    contactWechat: row.contact_wechat || "",
+    contactWhatsapp: row.contact_whatsapp || "",
+    verifyUrl: verifyTicketUrl(token),
+    event,
+  };
 }
 
 export const lookupApplication = createServerFn({ method: "GET" })
-  .validator((data: unknown) => z.object({ code: z.string().trim().min(3).optional(), phone: z.string().trim().optional() }).parse(data ?? {}))
-  .handler(async ({ data }) => {
+  .middleware([authMiddleware])
+  .validator((data: unknown) => z.object({ code: z.string().trim().min(3).optional() }).parse(data ?? {}))
+  .handler(async ({ context, data }) => {
     await ensureSeeded();
+    await ensureAppSchema();
     const sql = await getSql();
     const code = (data.code || "").trim();
-    const phone = (data.phone || "").replace(/\D/g, "");
-    if (!code && phone.length < 8) return [];
     const rows = code
-      ? await sql<RegRow>`select * from registrations where code = ${code} or apply_no = ${code} order by created_at desc`
-      : await sql<RegRow>`select * from registrations where regexp_replace(phone, '[^0-9]', '', 'g') = ${phone} order by created_at desc`;
+      ? await sql<RegRow>`
+          select * from registrations
+          where user_id = ${context.userId} and (code = ${code} or apply_no = ${code})
+          order by created_at desc
+        `
+      : await sql<RegRow>`
+          select * from registrations
+          where user_id = ${context.userId}
+          order by created_at desc
+          limit 40
+        `;
     const out: TicketRecord[] = [];
     for (const row of rows) {
       const eventRows = await sql.query<EventRow>(`${eventSelect} where e.id = $1 limit 1`, [row.event_id]);
-      if (eventRows[0]) out.push(mapTicket(row, mapEvent(eventRows[0])));
+      if (eventRows[0]) out.push(await mapOwnedTicket(row, mapEvent(eventRows[0])));
     }
     return out;
   });
 
 export const getTicketByCode = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
   .validator((data: unknown) => z.object({ code: z.string().min(3) }).parse(data))
-  .handler(async ({ data }): Promise<TicketRecord | null> => {
-    const rows = await lookupApplication({ data: { code: data.code } });
-    return rows[0] ?? null;
+  .handler(async ({ context, data }): Promise<TicketRecord | null> => {
+    await ensureSeeded();
+    await ensureAppSchema();
+    const sql = await getSql();
+    const rows = await sql<RegRow>`
+      select * from registrations
+      where user_id = ${context.userId} and (code = ${data.code} or apply_no = ${data.code})
+      limit 1
+    `;
+    const row = rows[0];
+    if (!row) return null;
+    const eventRows = await sql.query<EventRow>(`${eventSelect} where e.id = $1 limit 1`, [row.event_id]);
+    if (!eventRows[0]) return null;
+    return mapOwnedTicket(row, mapEvent(eventRows[0]));
   });
 
 export const listMyApplications = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<TicketRecord[]> => {
     await ensureSeeded();
+    await ensureAppSchema();
     const sql = await getSql();
     const rows = await sql<RegRow>`select * from registrations where user_id = ${context.userId} order by created_at desc`;
     const out: TicketRecord[] = [];
     for (const row of rows) {
       const eventRows = await sql.query<EventRow>(`${eventSelect} where e.id = $1 limit 1`, [row.event_id]);
-      if (eventRows[0]) out.push(mapTicket(row, mapEvent(eventRows[0])));
+      if (eventRows[0]) out.push(await mapOwnedTicket(row, mapEvent(eventRows[0])));
     }
     return out;
   });
 
 export const cancelApplication = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
   .validator((data: unknown) => z.object({ code: z.string().min(3) }).parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const rows = await sql<{ id: string; payment_status: string }>`select id, payment_status from registrations where code = ${data.code} or apply_no = ${data.code} limit 1`;
+    const rows = await sql<{ id: string; payment_status: string }>`
+      select id, payment_status from registrations
+      where user_id = ${context.userId} and (code = ${data.code} or apply_no = ${data.code})
+      limit 1
+    `;
     const row = rows[0];
     if (!row) throw new Error("找不到这条申请");
     if (row.payment_status !== "pending") throw new Error("只能取消待确认的申请");
-    await sql`update registrations set payment_status = 'cancelled' where id = ${row.id}`;
+    await sql`update registrations set payment_status = 'cancelled', cancelled_at = now(), cancelled_by = ${context.userId}, cancel_reason = ${"用户取消"} where id = ${row.id}`;
   });
 
 export { ensureSeeded, eventSelect, mapEvent };

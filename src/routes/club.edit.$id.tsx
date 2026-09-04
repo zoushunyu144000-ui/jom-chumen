@@ -13,8 +13,8 @@ import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { EVENT_CITIES } from "@/lib/catalog";
 import { clubInviteInfo } from "@/lib/server/chat";
-import { getMyClub, updateClub } from "@/lib/server/clubs";
-import type { CityId } from "@/lib/types";
+import { getMyClub, removeClubAdmin, transferClubOwner, updateClub } from "@/lib/server/clubs";
+import type { CityId, ClubStaff } from "@/lib/types";
 
 export const Route = createFileRoute("/club/edit/$id")({ component: EditClubPage });
 
@@ -26,25 +26,32 @@ function EditClubPage() {
   const [bio, setBio] = useState("");
   const [city, setCity] = useState<Exclude<CityId, "all">>("penang");
   const [coverUrl, setCoverUrl] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [staff, setStaff] = useState<ClubStaff[]>([]);
+  const [isOwner, setIsOwner] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [invite, setInvite] = useState("");
 
+  async function reload() {
+    const club = await getMyClub({ data: { id } });
+    if (!club) {
+      toast.error("找不到这个俱乐部");
+      return;
+    }
+    setName(club.name);
+    setBio(club.bio);
+    setCity(club.city);
+    setCoverUrl(club.coverUrl);
+    setAvatarUrl(club.avatarUrl);
+    setStaff(club.staff);
+    setIsOwner(club.isOwner);
+    setReady(true);
+  }
+
   useEffect(() => {
     if (!user) return;
-    getMyClub({ data: { id } })
-      .then((club) => {
-        if (!club) {
-          toast.error("找不到这个俱乐部");
-          return;
-        }
-        setName(club.name);
-        setBio(club.bio);
-        setCity(club.city);
-        setCoverUrl(club.coverUrl);
-        setReady(true);
-      })
-      .catch(() => toast.error("加载失败"));
+    reload().catch(() => toast.error("加载失败"));
     clubInviteInfo({ data: { clubId: id } })
       .then((info) => {
         const origin = window.location.origin;
@@ -64,7 +71,7 @@ function EditClubPage() {
     }
     setBusy(true);
     try {
-      await updateClub({ data: { id, name: name.trim(), bio: bio.trim(), city, coverUrl } });
+      await updateClub({ data: { id, name: name.trim(), bio: bio.trim(), city, coverUrl, avatarUrl } });
       toast.success("已保存");
       await navigate({ to: "/club" });
     } catch (err) {
@@ -84,6 +91,7 @@ function EditClubPage() {
       </header>
       {ready ? (
         <form onSubmit={(e) => void submit(e)} className="space-y-4 px-4">
+          <CoverPicker value={avatarUrl} onChange={setAvatarUrl} label="头像" variant="avatar" />
           <CoverPicker value={coverUrl} onChange={setCoverUrl} label="俱乐部封面" />
           <div className="space-y-1.5">
             <Label htmlFor="club-name">名称</Label>
@@ -101,10 +109,58 @@ function EditClubPage() {
               ))}
             </NativeSelect>
           </div>
+          {staff.length ? (
+            <div className="rounded-xl bg-surface p-3 shadow-card">
+              <p className="text-sm font-medium">主人 / 主理人</p>
+              <ul className="mt-2 space-y-2">
+                {staff.map((person) => (
+                  <li key={person.userId} className="flex items-center gap-2">
+                    {person.avatarUrl ? (
+                      <img src={person.avatarUrl} alt="" className="size-8 rounded-full object-cover" />
+                    ) : (
+                      <span className="flex size-8 items-center justify-center rounded-full bg-lime text-xs font-semibold">{person.name.slice(0, 1)}</span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{person.name}</p>
+                      <p className="text-xs text-muted">{person.role === "owner" ? "主人" : "主理人"}</p>
+                    </span>
+                    {isOwner && person.role !== "owner" ? (
+                      <div className="flex gap-1">
+                        <Button type="button" size="sm" variant="ghost" onClick={async () => {
+                          setBusy(true);
+                          try {
+                            await transferClubOwner({ data: { clubId: id, userId: person.userId } });
+                            toast.success("已转让主人");
+                            await reload();
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : "转让失败");
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}>转让</Button>
+                        <Button type="button" size="sm" variant="outline" onClick={async () => {
+                          setBusy(true);
+                          try {
+                            await removeClubAdmin({ data: { clubId: id, userId: person.userId } });
+                            toast.success("已移除");
+                            await reload();
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : "移除失败");
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}>移除</Button>
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {invite ? (
             <div className="rounded-xl bg-surface p-3 shadow-card">
-              <p className="text-sm font-medium">邀请管理员</p>
-              <p className="mt-1 text-xs text-muted">把链接发给信任的人，他登录后可以审核报名。</p>
+              <p className="text-sm font-medium">邀请主理人</p>
+              <p className="mt-1 text-xs text-muted">把链接发给信任的人，登录后可以一起管俱乐部和活动。</p>
               <p className="mt-2 break-all text-xs">{invite}</p>
               <Button type="button" variant="outline" className="mt-2 w-full" onClick={async () => {
                 try {

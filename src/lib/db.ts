@@ -10,11 +10,15 @@ const rawDatabaseUrl =
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
+function isVercelProduction() {
+  return typeof process !== "undefined" && process.env.VERCEL_ENV === "production";
+}
+
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
  * sandbox), otherwise a local embedded **PGLite** (Postgres compiled to WASM) so
  * the app has a working database even with nothing configured — the live preview
- * included. Swap in Neon later by just setting `DATABASE_URL`; no code changes.
+ * included. Production (`VERCEL_ENV=production`) never falls back to PGLite.
  */
 export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
 
@@ -176,6 +180,11 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  if (!databaseUrl && isVercelProduction()) {
+    throw new Error(
+      "[db] Production requires DATABASE_URL (Neon). Refusing in-memory PGLite so registrations cannot vanish on restart.",
+    );
+  }
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 
@@ -203,6 +212,9 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
   if (dbSource !== "pglite") {
     throw new Error("getPglite() is only available on the PGLite fallback (no DATABASE_URL)");
   }
+  if (isVercelProduction()) {
+    throw new Error("getPglite() is not available in production");
+  }
   await getSql();
   const pg = await globalRef.__pgliteInstance__;
   if (!pg) throw new Error("PGLite instance failed to initialize");
@@ -221,6 +233,13 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
  */
 export function ensureDbReady(): Promise<void> {
   if (dbSource !== "pglite") return Promise.resolve();
+  if (isVercelProduction()) {
+    return Promise.reject(
+      new Error(
+        "[db] Production requires DATABASE_URL (Neon). Refusing in-memory PGLite so registrations cannot vanish on restart.",
+      ),
+    );
+  }
   return getSql().then(() => undefined);
 }
 
@@ -229,7 +248,7 @@ export function ensureDbReady(): Promise<void> {
 const globalBoot = globalThis as typeof globalThis & {
   __pgBootstrapPromise__?: Promise<void>;
 };
-if (typeof window === "undefined" && dbSource === "pglite") {
+if (typeof window === "undefined" && dbSource === "pglite" && !isVercelProduction()) {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
