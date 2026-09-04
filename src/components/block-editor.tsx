@@ -1,6 +1,7 @@
 import { ImagePlus, Quote, Trash2, Type } from "lucide-react";
 import { toast } from "sonner";
 import { compressImage } from "@/lib/image";
+import { uploadMediaObject } from "@/lib/server/storage";
 import type { BodyBlock } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -54,9 +55,12 @@ export function BlockEditor({
   async function insertImage(file: File | undefined, at = value.length) {
     if (!file) return;
     try {
-      const src = await compressImage(file);
+      const compressed = await compressImage(file);
+      const stored = await uploadMediaObject({
+        data: { dataUrl: compressed, fileName: file.name || "body.jpg", kind: "event-body" },
+      });
       const next = [...value];
-      next.splice(at, 0, { type: "img", src, caption: "" });
+      next.splice(at, 0, { type: "img", src: stored.url, caption: "" });
       onChange(next);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "图片处理失败");

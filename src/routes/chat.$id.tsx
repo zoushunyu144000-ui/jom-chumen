@@ -8,6 +8,7 @@ import { PageLoading } from "@/components/page-loading";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { listChatMessages, sendChatMessage, type ChatMessage } from "@/lib/server/chat";
+import { uploadMediaObject } from "@/lib/server/storage";
 import { compressImage } from "@/lib/image";
 import { cn } from "@/lib/utils";
 
@@ -104,8 +105,11 @@ function ChatPage() {
     if (!file) return;
     try {
       if (file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
-        const src = await compressImage(file, { maxEdge: 1000, quality: 0.7, maxChars: 180_000 });
-        await send("image", src, file.name);
+        const compressed = await compressImage(file, { maxEdge: 1000, quality: 0.7, maxChars: 180_000 });
+        const stored = await uploadMediaObject({
+          data: { dataUrl: compressed, fileName: file.name || "image.jpg", kind: "chat-image" },
+        });
+        await send("image", stored.url, file.name);
         return;
       }
       if (file.size > 180_000) throw new Error("文件请小于 180KB");
@@ -115,7 +119,10 @@ function ChatPage() {
         reader.onerror = () => reject(new Error("读取失败"));
         reader.readAsDataURL(file);
       });
-      await send("file", src, file.name);
+      const stored = await uploadMediaObject({
+        data: { dataUrl: src, fileName: file.name || "file", kind: "chat-file" },
+      });
+      await send("file", stored.url, file.name);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "上传失败");
     }

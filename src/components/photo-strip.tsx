@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { compressImage } from "@/lib/image";
+import { uploadMediaObject } from "@/lib/server/storage";
 
 const MAX_PHOTOS = 8;
 
@@ -27,13 +28,16 @@ export function PhotoStrip({
     try {
       const list = Array.from(files).slice(0, room);
       for (const file of list) {
-        const src = await compressImage(file, {
+        const compressed = await compressImage(file, {
           maxEdge: 1100,
           quality: 0.72,
           format: "jpeg",
           maxChars: 220_000,
         });
-        next.push(src);
+        const stored = await uploadMediaObject({
+          data: { dataUrl: compressed, fileName: file.name || "event.jpg", kind: "event-gallery" },
+        });
+        next.push(stored.url);
       }
       onChange(next);
     } catch (err) {
@@ -63,11 +67,9 @@ export function PhotoStrip({
         {photos.map((src, i) => (
           <div key={`${i}-${src.slice(-12)}`} className="relative w-28 shrink-0">
             <img src={src} alt="" className="aspect-4/3 w-28 rounded-lg object-cover" />
-            {i === 0 ? (
-              <span className="absolute left-1 top-1 rounded bg-ink/80 px-1.5 py-0.5 text-[10px] text-lime">
-                封面
-              </span>
-            ) : null}
+            <span className="absolute left-1 top-1 rounded bg-ink/80 px-1.5 py-0.5 text-[10px] text-lime">
+              {i === 0 ? "封面" : `第 ${i + 1} 张`}
+            </span>
             <div className="mt-1 flex justify-between">
               <button type="button" className="flex size-7 items-center justify-center rounded-full bg-surface" onClick={() => move(i, -1)} aria-label="前移">
                 <ChevronLeft className="size-4" />
