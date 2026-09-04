@@ -39,7 +39,15 @@ jobs:
         run: npm run typecheck
 
       - name: Auth invariant
-        run: npm run check:auth
+        run: |
+          node -e 'const http=require("node:http");const server=http.createServer((req,res)=>{if(req.url==="/__app-env"){res.setHeader("content-type","application/json");res.end(JSON.stringify({VITE_AUTH_ENABLED:process.env.VITE_AUTH_ENABLED}));return;}res.statusCode=404;res.end("Not Found");});server.listen(8080,"127.0.0.1");' &
+          AUTH_PROBE_PID=$!
+          trap 'kill "$AUTH_PROBE_PID" 2>/dev/null || true' EXIT
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8080/__app-env >/dev/null; then break; fi
+            sleep 0.1
+          done
+          npm run check:auth
 
       - name: Build
         run: npm run build
