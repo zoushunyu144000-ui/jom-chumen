@@ -106,8 +106,7 @@ export async function drawPaperTicket(ticket: TicketRecord) {
   const outer = 36;
   const cardX = outer;
   const cardW = W - outer * 2;
-  const limeH = 10;
-  const coverH = Math.round(cardW / 2);
+  const limeH = 0;
   const pad = 48;
   const qrSize = 196;
   const titleFont = `800 44px ${FONT}`;
@@ -119,6 +118,9 @@ export async function drawPaperTicket(ticket: TicketRecord) {
   const venueLines = wrapLines(measure, ticket.event.venue, cardW - pad * 2 - 40, bodyFont).slice(0, 2);
 
   const cover = await loadCover(ticket.event.coverUrl);
+  const coverH = cover
+    ? Math.round(Math.min(Math.max(cardW * (cover.height / cover.width), cardW * 0.56), cardW * 1.05))
+    : Math.round(cardW * 0.62);
 
   const coverTop = outer + limeH;
   const textX = cardX + pad;
@@ -161,8 +163,6 @@ export async function drawPaperTicket(ticket: TicketRecord) {
   ctx.save();
   roundRect(ctx, cardX, outer, cardW, cardH, 28);
   ctx.clip();
-  ctx.fillStyle = LIME;
-  ctx.fillRect(cardX, outer, cardW, limeH);
   if (cover) {
     drawCoverFit(ctx, cover, cardX, coverTop, cardW, coverH);
   } else {

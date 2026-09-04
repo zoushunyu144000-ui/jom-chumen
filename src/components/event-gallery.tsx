@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { GALLERY_CAPTION, isGalleryImage } from "@/lib/server/event-media-parse";
+import { clampCoverRatio } from "@/components/cover-frame";
 import { cn } from "@/lib/utils";
 
 export function EventGallery({
@@ -14,7 +15,7 @@ export function EventGallery({
   const pics = images.filter(Boolean);
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(() => new Set());
-  const [portrait, setPortrait] = useState(true);
+  const [ratio, setRatio] = useState(1.25);
   const scroller = useRef<HTMLDivElement>(null);
   if (pics.length === 0) return null;
 
@@ -37,34 +38,32 @@ export function EventGallery({
     if (i !== 0) return;
     const w = img.naturalWidth;
     const h = img.naturalHeight;
-    if (w && h) setPortrait(h >= w);
+    if (w && h) setRatio(h / w);
   }
 
   return (
-    <div className="relative w-full max-w-full overflow-hidden bg-ink">
+    <div className="relative w-full max-w-full overflow-hidden bg-paper-2">
       <div
         ref={scroller}
         onScroll={onScroll}
-        className={cn(
-          "flex w-full max-w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          portrait ? "aspect-[3/4]" : "aspect-[4/3]",
-        )}
+        className="flex w-full max-w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ aspectRatio: `1 / ${clampCoverRatio(ratio)}` }}
         aria-label={pics.length > 1 ? `${alt}，共 ${pics.length} 张照片，可左右滑动` : alt}
       >
         {pics.map((src, i) => (
           <div
             key={`${i}-${src.slice(0, 24)}`}
-            className="flex h-full w-full shrink-0 snap-start items-center justify-center overflow-hidden bg-ink"
+            className="relative h-full w-full shrink-0 snap-start overflow-hidden"
           >
             {failed.has(i) ? (
-              <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs text-surface/70">
+              <div className="flex h-full w-full items-center justify-center bg-paper-2 px-6 text-center text-xs text-muted">
                 这张图片暂时加载失败
               </div>
             ) : (
               <img
                 src={src}
                 alt={i === 0 ? alt : `${alt} 第 ${i + 1} 张照片`}
-                className="max-h-full max-w-full object-contain"
+                className="absolute inset-0 size-full object-cover [outline:none]"
                 draggable={false}
                 loading={i === 0 ? "eager" : "lazy"}
                 fetchPriority={i === 0 ? "high" : "auto"}
@@ -77,7 +76,7 @@ export function EventGallery({
         ))}
       </div>
       {footer ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-linear-to-t from-ink via-ink/55 to-transparent px-4 pb-5 pt-16">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-linear-to-t from-ink/70 via-ink/20 to-transparent px-4 pb-5 pt-16">
           {footer}
         </div>
       ) : null}

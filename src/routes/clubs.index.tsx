@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { listClubs } from "@/lib/server/clubs";
 import { cityName } from "@/lib/catalog";
+import { clubMatchesPlace } from "@/lib/places";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 
@@ -13,15 +14,7 @@ export const Route = createFileRoute("/clubs/")({
 function ClubsPage() {
   const { clubs } = Route.useLoaderData();
   const place = useAppStore((s) => s.place);
-  const filtered = place.world
-    ? clubs.filter((club) =>
-        club.city === place.cityId ||
-        club.name.includes(place.cityName) ||
-        club.city === place.cityId,
-      )
-    : place.cityId === "all"
-      ? clubs
-      : clubs.filter((club) => club.city === place.cityId);
+  const filtered = clubs.filter((club) => clubMatchesPlace(club, place));
 
   return (
     <main className="px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))]">
