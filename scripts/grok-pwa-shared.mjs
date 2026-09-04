@@ -16,6 +16,7 @@ const SHARE_META_KEYS = new Set([
   "og:image",
   "og:image:width",
   "og:image:height",
+  "og:image:type",
   "og:type",
   "og:url",
   "og:site_name",
@@ -345,7 +346,8 @@ export function grokOgHeadTags({
     eventSlug && documentTitle
       ? documentTitle.replace(/\s*·\s*Jom.*$/i, "").trim() || documentTitle
       : resolveOgTitle(site, appName, host, documentTitle);
-  const publicHost = resolvePublicHost(host) || "jom-chumen-2026.vercel.app";
+  const isJomSite = String(site.title ?? "").trim() === "Jom 出门局";
+  const publicHost = resolvePublicHost(host) || (isJomSite || eventSlug ? "jom-chumen-2026.vercel.app" : "");
   const tags = [
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta property="og:title" content="${escapeHtml(title)}">`,
@@ -359,16 +361,33 @@ export function grokOgHeadTags({
   if (String(site.type ?? "").toLowerCase() === "x:game") {
     tags.push(`<meta property="og:type" content="x:game">`);
   }
-  const asset = resolveOgCardAsset(site, cwd) || "/covers/deep-talk.jpg";
-  const image = eventSlug
-    ? `https://${publicHost}/api/og/${encodeURIComponent(eventSlug)}?v=7`
-    : `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`;
-  tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
-  tags.push(`<meta property="og:image:width" content="1200">`);
-  tags.push(`<meta property="og:image:height" content="630">`);
-  tags.push(`<meta property="og:image:type" content="image/jpeg">`);
+
+  const asset = resolveOgCardAsset(site, cwd);
+  let image = "";
+  let imageType = "image/jpeg";
+  if (eventSlug && publicHost) {
+    image = `https://${publicHost}/api/og/${encodeURIComponent(eventSlug)}?v=7`;
+  } else if (asset && publicHost) {
+    image = `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`;
+    imageType = /\.png(?:$|[?#])/i.test(asset) ? "image/png" : "image/jpeg";
+  } else if (isJomSite && publicHost) {
+    image = `https://${publicHost}/covers/deep-talk.jpg`;
+  } else if (publicHost) {
+    const color = placeholderCardColor(site);
+    const query = `host=${encodeURIComponent(publicHost)}&title=${encodeURIComponent(title)}${color ? `&color=${color}` : ""}`;
+    image = `${ogServiceUrl()}/v1/card.png?${query}`;
+    imageType = "image/png";
+  }
+
+  if (image) {
+    tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
+    tags.push(`<meta property="og:image:width" content="1200">`);
+    tags.push(`<meta property="og:image:height" content="630">`);
+    tags.push(`<meta property="og:image:type" content="${imageType}">`);
+  }
+
   const banner = String(site.banner ?? "").trim();
-  if (banner) {
+  if (banner && publicHost) {
     const bannerUrl = `https://${publicHost}${banner.startsWith("/") ? banner : `/${banner}`}`;
     tags.push(`<meta property="x:game:image" content="${escapeHtml(bannerUrl)}">`);
     tags.push(`<meta property="x:game:image:width" content="1200">`);
@@ -404,14 +423,16 @@ function insertBeforeHeadClose(html, snippet) {
 
 export function normalizeHeadContext(ctx = {}) {
   const cwd = ctx.cwd ?? process.cwd();
-  // Middleware passes a baked `site`. Still consult the workspace so a
-  // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
-  // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
-  // a correct bake is unchanged.
-  const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
-    cwd,
-  );
+  // Runtime middleware passes a baked `site`; Vite dev passes an explicit cwd.
+  // Plain unit calls with neither should stay isolated from this repository's
+  // product-specific site.json so generic platform behavior remains testable.
+  const baseSite =
+    ctx.site !== undefined
+      ? ctx.site
+      : ctx.cwd !== undefined
+        ? snapshotOgIdentity(cwd).site
+        : {};
+  const site = applyCustomCardFromFs(baseSite, cwd);
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,

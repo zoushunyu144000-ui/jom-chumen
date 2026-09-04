@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Camera, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { compressImage } from "@/lib/image";
-import { cn } from "@/lib/utils";
+import { uploadMediaObject } from "@/lib/server/storage";
 
 export function CoverPicker({
   value,
@@ -24,13 +24,20 @@ export function CoverPicker({
     if (!file) return;
     setBusy(true);
     try {
-      const src = await compressImage(file, {
+      const compressed = await compressImage(file, {
         maxEdge: variant === "avatar" ? 640 : variant === "qr" ? 520 : 1400,
         quality: variant === "qr" ? 1 : 0.84,
         format: variant === "qr" ? "png" : "jpeg",
         maxChars: variant === "qr" ? 480_000 : 900_000,
       });
-      onChange(src);
+      const stored = await uploadMediaObject({
+        data: {
+          dataUrl: compressed,
+          fileName: file.name || "image",
+          kind: variant === "qr" ? "payment-qr" : variant === "avatar" ? "avatar" : "cover",
+        },
+      });
+      onChange(stored.url);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "图片处理失败，请先截图再上传");
     } finally {
