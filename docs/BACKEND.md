@@ -1,126 +1,122 @@
-# 后端现状（2026-09-03）
+# 后端现状（2026-09-04）
 
 ## 一句话
 
-**现在没有独立后端。** 网站和接口是同一个 Node 进程（TanStack Start server functions）。浏览器调的是同域 RPC，不是 `/api/v1/...` REST。
+JOM 仍是 **TanStack Start 同一个 Node 22 应用 + Postgres**，没有拆第二套后端，也没有支付网关。正式流程仍是：
 
-给真人用之前，缺的是 **图片不要塞进数据库** 和 **报名号并发**，不是再写一套 Java/Go 服务。正式站 Postgres 已在 Neon。
+**用户报名 → 自己 TNG / 现金付款 → WhatsApp 联系主办 → 主办人工确认 → 电子票。**
 
 ## 运行时
 
-| 层 | 实际是什么 |
+| 层 | 当前实现 |
 | --- | --- |
-| Web + RPC | TanStack Start（Vite / Nitro），Node 22 |
-| 登录 | Better Auth，`/api/auth/*`。站点自己的 Google + 邮箱密码（线上不要走 auth.grok.me） |
-| 数据库 | 有 `DATABASE_URL` → Neon/任意 Postgres。没有 → **内存 PGLite**（重启全丢） |
-| 文件 | 封面/相册仍可能以 `data:image/...` 进库，页面经 `/api/media/:slug` 按需读。默认图在 `public/covers/` |
-| 支付 | **无网关**。报名只留 TNG / 现金。库里只记方式和审核状态 |
-| 消息 | 表 `messages`（通知）+ `chats` / `chat_messages`（私聊）。不是 WhatsApp Business API |
-| 队列 / Redis / S3 | 没有 |
+| Web + RPC | TanStack Start / Nitro，Node 22 |
+| 登录 | Better Auth，邮箱密码 + 站点自己的 Google OAuth |
+| 数据库 | 正式环境 Postgres / Neon；`VERCEL_ENV=production` 缺 `DATABASE_URL` 会直接失败，不能退回 PGLite |
+| 文件 | 新上传走服务端 S3-compatible 对象存储，Cloudflare R2 为推荐实现 |
+| 支付 | 无支付网关；只记录 TNG / 现金和主办人工审核状态 |
+| 消息 | 站内信 + 私聊；不是 WhatsApp Business API |
 
-Schema 来源：`migrations/0001_auth.sql` … `0006_p0_ops.sql`，以及 `ensureAppSchema()` 里的幂等 `alter table`。新字段优先走 migration 文件。生产（`VERCEL_ENV=production`）没有 `DATABASE_URL` 会直接失败，不会静默用 PGLite。
+## 对象存储
 
-## 库表
+入口统一为 `src/lib/server/storage.ts` 的 `uploadMediaObject`。
 
-**身份（Better Auth，camelCase 带引号）**
+新上传覆盖：
 
-- `"user"` `"session"` `"account"` `"verification"`
+- 活动封面 / 相册
+- 活动正文插图
+- 用户头像
+- 俱乐部头像 / 封面
+- TNG / 微信 / 支付宝收款码
+- 私信图片 / 文件
 
-**业务（snake_case）**
+规则：
 
-- `clubs`：主办人的俱乐部。`user_id` = 主人。独立 `avatar_url` + 横向 `cover_url`
-- `club_members`：主人 / 主理人。粉丝加入/退出/列表还没有
-- `events`：活动。`user_id` 主办，`club_id` 所属俱乐部。`status`：`draft/published/closed/cancelled/archived`。`open` 控制是否还收申请。收款码和 WhatsApp 冗余在活动行上（发活动时从 `host_settings` 拷过来）。有 `refund_hours` / `refund_fee_percent` / `gallery_count`
-- `apply_counters`：每日报名号原子计数（`HD-YYYYMMDD-NNN`）
-- `registrations`：报名。`payment_status`、`apply_no`（唯一）、`verify_token`（高随机验票）、手机、微信/WhatsApp、人数、金额、`refund_status`、`cancelled_at` / `checked_in_at`
-- `profiles`：展示名、头像、标签、`gender`
-- `host_settings`：主办人默认 WhatsApp 和三张收款码
-- `messages`：站内通知
-- `chats` / `chat_members` / `chat_messages`：私聊
-- `_migrations`：已执行的 SQL 文件名
+1. 客户端图片先压缩，再交给服务端。
+2. secret 只在服务端读取，浏览器拿不到。
+3. 文件 key 使用随机 UUID，避免覆盖。
+4. 服务端校验 MIME 和大小。
+5. 数据库业务字段只保存 URL；`media_objects` 记录 object key、文件名、MIME、大小、用途等 metadata。
+6. 旧 `data:image/...` / Data URL 数据继续能读，不要求本轮批量搬迁。
+7. development 没配对象存储时允许明确的 inline fallback。
+8. production 没配对象存储时直接报错，**禁止偷偷继续把大文件塞进 Postgres**。
 
-种子活动在 `src/lib/catalog.ts` 的 `EVENT_SEED` / `CLUB_SEED`，第一次查询时写入。演示数据，不是用户数据。
+### Cloudflare R2
 
-## 接口（server functions）
+```env
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+R2_PUBLIC_URL=
+```
 
-全部在 `src/lib/server/`。需要登录的挂了 `authMiddleware`。
+也支持通用 S3-compatible 配置，`S3_*` 优先于 `R2_*`：
 
-| 模块 | 函数 |
-| --- | --- |
-| events / event-public / event-cards | 列表、详情（轻量，照片走 `/api/media`）。查申请/票必须登录且只能看自己的 |
-| register | `createLightRegistration`（须登录；TNG / 现金 / 免费） |
-| clubs / host-lists / access | 俱乐部、主人/主理人权限、工作台列表 |
-| admin | 审报名、撤票、取消活动、下架、导出 |
-| verify | 公共验票 `/verify/<token>`；核销须主办权限 |
-| event-edit / event-policy | 改活动、退款规则 |
-| profile / gender | 资料、收款设置、注册性别 |
-| people | 报名者头像、个人主页 |
-| chat | 私聊、俱乐部聊、邀请管理员。已有 chat ID 不会自动加人 |
-| messages | 通知列表 |
-| refund / apply-view | 申请退款、待确认页 |
+```env
+S3_ENDPOINT=
+S3_REGION=auto
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_BUCKET=
+S3_PUBLIC_URL=
+```
 
-权限：统一 `canManageClub` / `canManageEvent` / `isClubOwner`。主理人可改资料、发活动、审报名、撤票。只有主人能转让/移除主理人。粉丝成员流未做。
+`R2_PUBLIC_URL` / `S3_PUBLIC_URL` 必须是浏览器可以访问对象的公开基础 URL。
 
-报名同意后才把 `payment_status` 设为 `approved`，并给申请人推一条站内信。拒绝必须填原因。
+## 关键表
 
-## 环境变量
+- Better Auth：`user` / `session` / `account` / `verification`
+- `clubs` / `club_members`
+- `events`
+- `apply_counters`
+- `registrations`
+- `profiles`
+- `host_settings`
+- `messages`
+- `chats` / `chat_members` / `chat_messages`
+- `media_objects`
+- `_migrations`
 
-见 `.env.example`。上线最少要：
+Schema 以 `migrations/` 为准；对象存储 metadata 在 `0007_storage.sql`。
 
-- `DATABASE_URL`（Postgres）
-- `VITE_AUTH_ENABLED=true`
-- `BETTER_AUTH_URL` = 公网 HTTPS 源（`https://jom-chumen-2026.vercel.app`）
-- `BETTER_AUTH_SECRET`
+## 已完成的 P0 安全线
 
-Google 登录要站点自己的 `GOOGLE_CLIENT_*`。**换域名后 OAuth 会断。邮箱密码可以自己撑。**
+- 报名号用 `apply_counters` 原子 +1，`apply_no` 有唯一索引。
+- 电子票有高随机 `verify_token` 和 `/verify/<token>`。
+- 看自己的报名 / 票必须登录并服务端按 `user_id` 限制。
+- 猜到 `chat ID` 不会自动加入聊天。
+- 主人 / 主理人权限在服务端检查。
+- 主办可核销、撤票、取消活动。
+- 正式环境缺 Postgres 时禁止 PGLite fallback。
 
-## 已知后端缺口
+## 自动质检
 
-1. 预览/未配库 = 内存库，不能当生产
-2. 用户上传图以 Data URL 进 Postgres，体积和备份都会炸（页面已改 URL 读取，库还没迁对象存储）
-3. 没有对象存储、没有 CDN 私有图
-4. 没有真正的支付对账
-5. 没有对象存储（R2/S3）。私信/封面仍可能是压缩后的 Data URL
-5. 没有短信 / WhatsApp 官方通知，只有站内信 + `wa.me` 链接
-6. 报名号序号用 `count(*)`，并发会撞号
-7. 活动 `city` 仍是五个枚举，和全世界城市选择器不一致
-8. 封面/收款码没有病毒扫描、大小限制只靠 zod 字符串长度
-9. 正式站部署被 Hobby 日限额拦住时，GitHub `main` 会比线上新
+`.github/workflows/ci.yml` 在：
 
----
+- push 到 `main`
+- pull request 指向 `main`
 
-## 能不能把后端挂到加州那台 Grok 云电脑？
+使用 Node 22 自动执行：
 
-**能跑进程，不适合当给东南亚用户用的生产机。**
+1. `npm ci`
+2. `npm test`
+3. `npm run typecheck`
+4. `npm run check:auth`
+5. `npm run build`
 
-### 这台机器适合干什么
+CI 不自动部署，也不需要 Production `DATABASE_URL`。CI 使用 preview/test 环境，因此不会绕过生产数据库安全规则。
 
-- 给其他编程 Agent 拉这个 GitHub 仓库、改代码、跑 `npm test` / `typecheck`、提 PR
-- 当开发机 / 预发，你自己 SSH 上去看
+## 分享图
 
-### 不适合当线上站的原因
+`/api/og/:slug` 会把 PNG / WebP / JPEG / 任意比例封面统一处理为 **1200×630 JPEG**。没有封面时使用米白品牌兜底图。页面 metadata 固定声明同样的尺寸和 `image/jpeg`。
 
-1. **产品用户在槟城、吉隆坡、新加坡、曼谷。** 机器在加州，往返大概 180–250ms。能打开，但数据库和登录 cookie 都绕地球一圈，没有必要。
-2. **Grok Bot 云电脑是 Agent 工作机**，不是机房。通常没有稳定的公网 443、证书、进程守护。关机、休眠、重装，网站就没了。
-3. **现在前后端没拆。** 「只把后端挂过去」做不到，除非先把 server functions 抽成独立 API（这是后面的任务，不是现在的结构）。
-4. **Google 登录绑的是站点回调域名。** 换成加州 IP 或随便一个域名会失败。邮箱密码仍可用。
-5. **数据必须在 Postgres 里。** 把 Node 挂在加州、库还用内存 PGLite，等于没挂。
+## 仍未做
 
-### 推荐部署（按优先级）
+- 历史 Data URL 批量迁移（本轮只保证旧数据继续读、新数据不再写进去）
+- 俱乐部普通粉丝加入 / 退出 / 公开成员列表
+- WhatsApp Business API / 邮件通知
+- 全球城市数据结构重做
+- 支付网关 / 自动退款 / 评价 / 举报 / 多语言
 
-| 方案 | 给谁用 | 说明 |
-| --- | --- | --- |
-| A. 现在这条：Vercel + Neon（新加坡） | 真实用户 | 最少改动。正式域名 `jom-chumen-2026.vercel.app` |
-| B. 新加坡 / 马来 VPS：Node 22 + Caddy + Postgres | 自建域名 | 要自己管 HTTPS、备份、`BETTER_AUTH_URL` |
-| C. 加州 Grok 电脑只跑 Agent | 写代码的机器人 | **推荐给 Bot 用，不给终端用户用** |
-
-若坚持自建（方案 B），清单：
-
-- Node 22、`npm run build`、用进程管理（systemd / pm2）跑 Nitro 产物
-- Postgres 16+，跑 `npm run db:migrate`
-- 域名 + HTTPS（Caddy 最省事）
-- 环境变量按 `.env.example`
-- 图片改对象存储之后再对外开放上传
-- 决定：继续用 Google OAuth，还是只留邮箱密码
-
-**结论：Bot 的加州电脑用来协同写代码；用户访问的站和数据库放亚洲。不要把报名数据只存在那台开发机上。**
+这些不影响本轮稳定性收尾，也不要为了它们大重构。
