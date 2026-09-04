@@ -10,6 +10,7 @@ export function EventGallery({
 }) {
   const pics = images.filter(Boolean);
   const [index, setIndex] = useState(0);
+  const [failed, setFailed] = useState<Set<number>>(() => new Set());
   const scroller = useRef<HTMLDivElement>(null);
   if (pics.length === 0) return null;
 
@@ -20,34 +21,55 @@ export function EventGallery({
     setIndex(Math.min(pics.length - 1, Math.max(0, i)));
   }
 
+  function markFailed(i: number) {
+    setFailed((current) => {
+      const next = new Set(current);
+      next.add(i);
+      return next;
+    });
+  }
+
   return (
-    <div className="relative">
+    <div className="relative w-full max-w-full overflow-hidden bg-paper-2">
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="flex aspect-4/3 snap-x snap-mandatory overflow-x-auto bg-paper-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex aspect-4/3 w-full max-w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain bg-paper-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label={pics.length > 1 ? `${alt}，共 ${pics.length} 张照片，可左右滑动` : alt}
       >
         {pics.map((src, i) => (
-          <img
+          <div
             key={`${i}-${src.slice(0, 24)}`}
-            src={src}
-            alt={i === 0 ? alt : ""}
-            className="h-full w-full shrink-0 snap-center object-cover"
-            draggable={false}
-          />
+            className="flex h-full w-full shrink-0 snap-start items-center justify-center overflow-hidden bg-paper-2"
+          >
+            {failed.has(i) ? (
+              <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs text-muted">
+                这张图片暂时加载失败
+              </div>
+            ) : (
+              <img
+                src={src}
+                alt={i === 0 ? alt : `${alt} 第 ${i + 1} 张照片`}
+                className="h-full w-full object-cover"
+                draggable={false}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "auto"}
+                decoding="async"
+                onError={() => markFailed(i)}
+              />
+            )}
+          </div>
         ))}
       </div>
       {pics.length > 1 ? (
-        <>
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-            {pics.map((_, i) => (
-              <span key={i} className={`h-1.5 rounded-full ${i === index ? "w-4 bg-lime" : "w-1.5 bg-paper/80"}`} />
-            ))}
-          </div>
-          <span className="absolute bottom-3 right-3 rounded-full bg-ink/70 px-2 py-0.5 text-[11px] text-lime">
-            {index + 1}/{pics.length}
-          </span>
-        </>
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5" aria-hidden="true">
+          {pics.map((_, i) => (
+            <span
+              key={i}
+              className={`size-1.5 rounded-full shadow-sm ${i === index ? "bg-lime" : "bg-paper/80"}`}
+            />
+          ))}
+        </div>
       ) : null}
     </div>
   );
