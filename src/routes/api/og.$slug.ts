@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/og/$slug")({
         } catch {
           jpeg = await brandFallback(event.title);
         }
-        return new Response(jpeg, {
+        return new Response(new Uint8Array(jpeg), {
           headers: {
             "Content-Type": "image/jpeg",
             "Content-Length": String(jpeg.byteLength),
