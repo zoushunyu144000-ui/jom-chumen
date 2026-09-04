@@ -26,6 +26,10 @@ function makeWorkspace(appEnvJson) {
   return root;
 }
 
+function envWithAuth(value) {
+  return { ...process.env, VITE_AUTH_ENABLED: value };
+}
+
 test("keeps VITE_-prefixed string entries", () => {
   assert.deepEqual(parseAppEnv('{"VITE_AUTH_ENABLED":"false"}'), {
     VITE_AUTH_ENABLED: "false",
@@ -59,8 +63,8 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
-test("the template ships auth off", () => {
-  assert.deepEqual(readAppEnv(projectRoot()), { VITE_AUTH_ENABLED: "false" });
+test("this repository does not rely on a tracked hidden app-env", () => {
+  assert.deepEqual(readAppEnv(projectRoot()), {});
 });
 
 test("vite loadEnv resolves the wrapped value", () => {
@@ -73,13 +77,12 @@ test("vite loadEnv resolves the wrapped value", () => {
   assert.equal(merged.VITE_AUTH_ENABLED, "false");
 });
 
-test("the wrapped command runs with the app env applied", async () => {
-  const { stdout } = await execFileAsync(process.execPath, [
-    WRAPPER,
+test("the wrapped command runs with the explicit auth environment applied", async () => {
+  const { stdout } = await execFileAsync(
     process.execPath,
-    "-e",
-    PRINT_FLAG,
-  ]);
+    [WRAPPER, process.execPath, "-e", PRINT_FLAG],
+    { env: envWithAuth("false") },
+  );
   assert.equal(stdout, "false");
 });
 
@@ -87,7 +90,7 @@ test("the wrapped command sees an explicit override, not the file value", async 
   const { stdout } = await execFileAsync(
     process.execPath,
     [WRAPPER, process.execPath, "-e", PRINT_FLAG],
-    { env: { ...process.env, VITE_AUTH_ENABLED: "true" } },
+    { env: envWithAuth("true") },
   );
   assert.equal(stdout, "true");
 });
@@ -118,11 +121,10 @@ test("the CLI still runs when invoked through a symlinked path", async () => {
   // turns the wrapper into a no-op that exits 0 without starting anything.
   const link = join(mkdtempSync(join(tmpdir(), "app-env-link-")), "scripts");
   symlinkSync(join(projectRoot(), "scripts"), link);
-  const { stdout } = await execFileAsync(process.execPath, [
-    join(link, "with-app-env.mjs"),
+  const { stdout } = await execFileAsync(
     process.execPath,
-    "-e",
-    PRINT_FLAG,
-  ]);
+    [join(link, "with-app-env.mjs"), process.execPath, "-e", PRINT_FLAG],
+    { env: envWithAuth("false") },
+  );
   assert.equal(stdout, "false");
 });
