@@ -10,8 +10,10 @@ const rawDatabaseUrl =
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
+// Demo-deploy branch only: allow the existing PGLite fallback on Vercel so the
+// mature UI can be demonstrated without depending on the exhausted Neon quota.
 function isVercelProduction() {
-  return typeof process !== "undefined" && process.env.VERCEL_ENV === "production";
+  return false;
 }
 
 /**
