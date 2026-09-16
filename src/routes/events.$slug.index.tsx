@@ -1,30 +1,25 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Ticket, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventBody } from "@/components/event-body";
 import { EventGallery, eventGalleryImages } from "@/components/event-gallery";
 import { EventPeople } from "@/components/event-people";
 import { EventShareButton } from "@/components/event-share";
-import { EventPageSkeleton } from "@/components/page-loading";
+import { GALLERY_CAPTION } from "@/components/event-form";
 import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
-import { isDemoEvent } from "@/lib/demo-events";
 import { formatPrice, formatRange } from "@/lib/format";
 import { eventOgImageUrl, eventShareUrl } from "@/lib/public-url";
 import { getPublicEvent } from "@/lib/server/event-public";
-import { getEventIntro } from "@/lib/server/event-meta";
 
 export const Route = createFileRoute("/events/$slug/")({
   loader: async ({ params }) => {
     const event = await getPublicEvent({ data: { slug: params.slug } });
     if (!event) throw notFound();
-    const intro = await getEventIntro({ data: { slug: params.slug } }).catch(() => []);
-    return { event, intro };
+    return { event };
   },
-  staleTime: 0,
-  pendingMs: 0,
-  pendingComponent: () => <EventPageSkeleton label="打开活动" />,
+  staleTime: 15_000,
   head: ({ loaderData }) => {
     const event = loaderData?.event;
     if (!event) return {};
@@ -67,10 +62,11 @@ export const Route = createFileRoute("/events/$slug/")({
 });
 
 function EventDetail() {
-  const { event, intro } = Route.useLoaderData();
+  const { event } = Route.useLoaderData();
   const soldOut = event.remaining <= 0;
-  const images = eventGalleryImages({ coverUrl: event.coverUrl, body: event.body });
-  const introBlocks = intro ?? [];
+  const body = event.body ?? [];
+  const images = eventGalleryImages({ coverUrl: event.coverUrl, body });
+  const introBlocks = body.filter((block) => !(block.type === "img" && block.caption === GALLERY_CAPTION));
   const hasIntro = introBlocks.some((block) => {
     if (block.type === "img") return Boolean(block.src);
     if (block.type === "ul") return block.items.some((item) => item.trim());
@@ -78,51 +74,28 @@ function EventDetail() {
   });
   const hasMap = event.lat != null && event.lng != null;
   const apply = event.myApply;
-  const priceLabel = formatPrice(event.price, event.currency);
 
   return (
     <main className="pb-28">
       <div className="relative">
         <EventGallery images={images.length ? images : [event.coverUrl]} alt={event.title} />
-        <Link to="/" className="glass-pill absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full text-ink" aria-label="返回">
+        <Link to="/" className="absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full bg-paper/90 text-ink shadow-card" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>
         <div className="absolute right-3 top-3 z-10">
           <EventShareButton event={event} />
         </div>
-        <div className="absolute left-3 top-16 z-10 flex items-center gap-1.5">
-          <Badge>{categoryName(event.category)}</Badge>
-          {isDemoEvent(event) ? (
-            <span className="rounded-full bg-ink/75 px-2.5 py-1 text-[12px] font-semibold text-surface backdrop-blur-md">
-              演示
-            </span>
-          ) : null}
-        </div>
+        <Badge className="absolute left-3 top-16 z-10">{categoryName(event.category)}</Badge>
       </div>
       <section className="px-4 pt-4">
         <p className="text-xs font-medium text-muted">{cityName(event.city)}</p>
         <h1 className="mt-1 font-display text-[1.7rem] font-bold leading-tight tracking-tight">{event.title}</h1>
-        {event.subtitle ? <p className="mt-1 text-sm text-ink-soft">{event.subtitle}</p> : null}
-
-        <ul className="mt-4 space-y-2.5 text-[15px]">
-          <li className="flex gap-3">
-            <Calendar className="mt-0.5 size-4 shrink-0 text-muted" />
-            <span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span>
-          </li>
-          <li className="flex gap-3">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-muted" />
-            <span className="font-medium">{event.venue}</span>
-          </li>
-          <li className="flex gap-3">
-            <Users className="mt-0.5 size-4 shrink-0 text-muted" />
-            <span className="font-medium">
-              {priceLabel}
-              <span className="text-muted"> · </span>
-              {soldOut ? "已满" : `已报 ${event.booked}/${event.capacity}`}
-            </span>
-          </li>
+        <ul className="mt-4 space-y-3 rounded-xl bg-ink p-4 text-sm text-surface shadow-card">
+          <li className="flex gap-3"><Calendar className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{formatRange(event.startsAt, event.endsAt, event.currency)}</span></li>
+          <li className="flex gap-3"><MapPin className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">{event.venue}</span></li>
+          <li className="flex gap-3"><Ticket className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-display text-lg font-bold text-lime">{formatPrice(event.price, event.currency)}</span></li>
+          <li className="flex gap-3"><Users className="mt-0.5 size-4 shrink-0 text-lime" /><span className="font-medium">已报 {event.booked}/{event.capacity}</span></li>
         </ul>
-
         <EventPeople slug={event.slug} />
         {hasMap ? <EventMap lat={event.lat as number} lng={event.lng as number} label={event.venue} className="mt-4" /> : null}
         {event.clubId && event.clubName ? (
@@ -161,9 +134,9 @@ function EventDetail() {
           <EventShareButton event={event} />
         </div>
       </section>
-      <div className="glass-nav fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center gap-3 border-t border-line bg-paper/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div>
-          <p className="font-display text-xl font-bold tabular-nums leading-none">{priceLabel}</p>
+          <p className="font-display text-xl font-bold tabular-nums leading-none">{formatPrice(event.price, event.currency)}</p>
           <p className="mt-1 text-[11px] text-muted">{apply ? "已报名" : soldOut ? "名额已满" : `已报 ${event.booked}/${event.capacity}`}</p>
         </div>
         {apply ? (

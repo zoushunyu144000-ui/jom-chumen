@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { EventForm, emptyEventDraft, parseEventDraft, type EventDraft } from "@/components/event-form";
@@ -17,7 +17,6 @@ export const Route = createFileRoute("/me/events/new")({ component: NewEventPage
 function NewEventPage() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
-  const router = useRouter();
   const [clubs, setClubs] = useState<ClubRecord[]>([]);
   const [draft, setDraft] = useState<EventDraft>(() => emptyEventDraft());
   const [busy, setBusy] = useState(false);
@@ -37,24 +36,24 @@ function NewEventPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    const parsed = parseEventDraft(draft);
+    if (!parsed.title || !parsed.venue || !parsed.coverUrl) {
+      toast.error("标题、地点和封面都要有");
+      return;
+    }
+    const host = await getHostSettings().catch(() => null);
+    if (!host || !isRealWhatsapp(host.whatsapp) || !isRealQr(host.tng_qr)) {
+      toast.error("发布前先去填客服 WhatsApp 和 TNG 收款码");
+      await navigate({ to: "/me/host" });
+      return;
+    }
     setBusy(true);
     try {
-      const parsed = parseEventDraft(draft);
-      if (!parsed.title || !parsed.venue || !parsed.coverUrl) {
-        toast.error("标题、地点和封面都要有");
-        return;
-      }
-      const host = await getHostSettings().catch(() => null);
-      if (!host || !isRealWhatsapp(host.whatsapp) || !isRealQr(host.tng_qr)) {
-        toast.error("发布前先去填客服 WhatsApp 和 TNG 收款码");
-        await navigate({ to: "/me/host" });
-        return;
-      }
       let cid = parsed.clubId;
       if (!cid) {
         if (!parsed.newClubName) {
           toast.error("先给俱乐部起个名字");
+          setBusy(false);
           return;
         }
         const club = await createClub({
@@ -92,9 +91,8 @@ function NewEventPage() {
           refundFeePercent: Number(draft.refundFeePercent) || 50,
           galleryCount: Math.max(0, draft.photos.filter(Boolean).length - 1),
         },
-      }).catch(() => undefined);
+      });
       toast.success("活动已发布");
-      await router.invalidate();
       await navigate({ to: "/events/$slug", params: { slug: created.slug } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "发布失败");
@@ -105,7 +103,7 @@ function NewEventPage() {
 
   return (
     <main className="pb-10">
-      <header className="glass-head sticky top-0 z-20 flex items-center gap-1 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <header className="sticky top-0 z-20 flex items-center gap-1 bg-paper/95 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
         <Link to="/club" className="flex size-11 items-center justify-center" aria-label="返回">
           <ArrowLeft className="size-5" />
         </Link>

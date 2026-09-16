@@ -90,9 +90,8 @@ test("only a divergence warns the smoke verdict", () => {
   }
 });
 
-test("the build side defaults sign-in on when no tracked app-env overrides it", () => {
-  assert.equal(buildAuthEnabled(projectRoot(), {}), true);
-  assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "false" }), false);
+test("the build side resolves the template's shipped app-env", () => {
+  assert.equal(buildAuthEnabled(projectRoot(), {}), false);
   assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
 });
 

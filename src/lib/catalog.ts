@@ -1,5 +1,4 @@
-import type { BodyBlock, CategoryId, CityId, Currency, EventRecord } from "@/lib/types";
-import { DEMO_CLUB_SEED, DEMO_EVENT_SEED } from "@/lib/demo-events";
+import type { CategoryId, CityId, Currency, EventRecord } from "@/lib/types";
 
 export const CITIES: { id: CityId; name: string; nameEn: string }[] = [
   { id: "all", name: "全部城市", nameEn: "All" },
@@ -127,7 +126,6 @@ export const CLUB_SEED: {
     coverUrl: "/covers/citywalk-bkk.jpg",
     eventSlugs: ["citywalk-bkk-night"],
   },
-  ...DEMO_CLUB_SEED,
 ];
 
 
@@ -135,6 +133,7 @@ type Seed = Omit<
   EventRecord,
   | "booked"
   | "remaining"
+  | "body"
   | "clubId"
   | "clubName"
   | "userId"
@@ -145,17 +144,9 @@ type Seed = Omit<
   | "tngQr"
   | "lat"
   | "lng"
-  | "status"
-  | "cancelReason"
-  | "body"
-> & {
-  body?: BodyBlock[];
-  lat?: number | null;
-  lng?: number | null;
-  galleryCount?: number;
-};
+>;
 
-const EVENT_SEED_CORE: Seed[] = [
+export const EVENT_SEED: Seed[] = [
   {
     id: "frisbee-penang-sunset",
     slug: "frisbee-penang-sunset",
@@ -477,5 +468,3 @@ const EVENT_SEED_CORE: Seed[] = [
     level: "all",
   },
 ];
-
-export const EVENT_SEED: Seed[] = [...EVENT_SEED_CORE, ...DEMO_EVENT_SEED];

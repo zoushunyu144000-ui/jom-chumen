@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { EventForm, draftFromEvent, parseEventDraft, type EventDraft } from "@/components/event-form";
@@ -16,7 +16,6 @@ function EditEventPage() {
   const { eventId } = Route.useParams();
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
-  const router = useRouter();
   const [clubs, setClubs] = useState<ClubRecord[]>([]);
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,19 +51,19 @@ function EditEventPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!draft || busy) return;
+    if (!draft) return;
+    const parsed = parseEventDraft(draft);
+    if (!parsed.title || !parsed.venue) {
+      toast.error("标题和地点都要有");
+      return;
+    }
+    if (!parsed.clubId) {
+      toast.error("请选择俱乐部");
+      return;
+    }
     setBusy(true);
     try {
-      const parsed = parseEventDraft(draft);
-      if (!parsed.title || !parsed.venue) {
-        toast.error("标题和地点都要有");
-        return;
-      }
-      if (!parsed.clubId) {
-        toast.error("请选择俱乐部");
-        return;
-      }
-      const saved = await saveEventEdits({
+      await saveEventEdits({
         data: {
           eventId,
           clubId: parsed.clubId,
@@ -86,13 +85,10 @@ function EditEventPage() {
           hostNote: parsed.hostNote,
           level: parsed.level,
           body: parsed.body,
-          refundHours: parsed.refundHours,
-          refundFeePercent: parsed.refundFeePercent,
         },
       });
       toast.success("已保存");
-      await router.invalidate();
-      await navigate({ to: "/events/$slug", params: { slug: saved.slug } });
+      await navigate({ to: "/club" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "保存失败");
     } finally {
@@ -102,7 +98,7 @@ function EditEventPage() {
 
   return (
     <main className="pb-10">
-      <header className="glass-head sticky top-0 z-20 flex items-center gap-1 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+      <header className="sticky top-0 z-20 flex items-center gap-1 bg-paper/95 px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
         <Link to="/club" className="flex size-11 items-center justify-center" aria-label="返回"><ArrowLeft className="size-5" /></Link>
         <h1 className="font-display text-lg font-semibold">编辑活动</h1>
       </header>

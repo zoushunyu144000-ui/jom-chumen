@@ -29,7 +29,6 @@ import { Route as MeHostRouteImport } from './routes/me.host'
 import { Route as MeProfileRouteImport } from './routes/me.profile'
 import { Route as TicketCodeRouteImport } from './routes/ticket.$code'
 import { Route as UsersIdRouteImport } from './routes/users.$id'
-import { Route as VerifyTokenRouteImport } from './routes/verify.$token'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiMediaSlugRouteImport } from './routes/api/media.$slug'
 import { Route as ApiOgSlugRouteImport } from './routes/api/og.$slug'
@@ -140,11 +139,6 @@ const UsersIdRoute = UsersIdRouteImport.update({
   path: '/users/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerifyTokenRoute = VerifyTokenRouteImport.update({
-  id: '/verify/$token',
-  path: '/verify/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -208,7 +202,6 @@ export interface FileRoutesByFullPath {
   '/me/profile': typeof MeProfileRoute
   '/ticket/$code': typeof TicketCodeRoute
   '/users/$id': typeof UsersIdRoute
-  '/verify/$token': typeof VerifyTokenRoute
   '/club/': typeof ClubIndexRoute
   '/clubs/': typeof ClubsIndexRoute
   '/manage/': typeof ManageIndexRoute
@@ -240,7 +233,6 @@ export interface FileRoutesByTo {
   '/me/profile': typeof MeProfileRoute
   '/ticket/$code': typeof TicketCodeRoute
   '/users/$id': typeof UsersIdRoute
-  '/verify/$token': typeof VerifyTokenRoute
   '/club': typeof ClubIndexRoute
   '/clubs': typeof ClubsIndexRoute
   '/manage': typeof ManageIndexRoute
@@ -273,7 +265,6 @@ export interface FileRoutesById {
   '/me/profile': typeof MeProfileRoute
   '/ticket/$code': typeof TicketCodeRoute
   '/users/$id': typeof UsersIdRoute
-  '/verify/$token': typeof VerifyTokenRoute
   '/club/': typeof ClubIndexRoute
   '/clubs/': typeof ClubsIndexRoute
   '/manage/': typeof ManageIndexRoute
@@ -307,7 +298,6 @@ export interface FileRouteTypes {
     | '/me/profile'
     | '/ticket/$code'
     | '/users/$id'
-    | '/verify/$token'
     | '/club/'
     | '/clubs/'
     | '/manage/'
@@ -339,7 +329,6 @@ export interface FileRouteTypes {
     | '/me/profile'
     | '/ticket/$code'
     | '/users/$id'
-    | '/verify/$token'
     | '/club'
     | '/clubs'
     | '/manage'
@@ -371,7 +360,6 @@ export interface FileRouteTypes {
     | '/me/profile'
     | '/ticket/$code'
     | '/users/$id'
-    | '/verify/$token'
     | '/club/'
     | '/clubs/'
     | '/manage/'
@@ -404,7 +392,6 @@ export interface RootRouteChildren {
   MeProfileRoute: typeof MeProfileRoute
   TicketCodeRoute: typeof TicketCodeRoute
   UsersIdRoute: typeof UsersIdRoute
-  VerifyTokenRoute: typeof VerifyTokenRoute
   ClubIndexRoute: typeof ClubIndexRoute
   ClubsIndexRoute: typeof ClubsIndexRoute
   ManageIndexRoute: typeof ManageIndexRoute
@@ -562,13 +549,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/verify/$token': {
-      id: '/verify/$token'
-      path: '/verify/$token'
-      fullPath: '/verify/$token'
-      preLoaderRoute: typeof VerifyTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -652,7 +632,6 @@ const rootRouteChildren: RootRouteChildren = {
   MeProfileRoute: MeProfileRoute,
   TicketCodeRoute: TicketCodeRoute,
   UsersIdRoute: UsersIdRoute,
-  VerifyTokenRoute: VerifyTokenRoute,
   ClubIndexRoute: ClubIndexRoute,
   ClubsIndexRoute: ClubsIndexRoute,
   ManageIndexRoute: ManageIndexRoute,

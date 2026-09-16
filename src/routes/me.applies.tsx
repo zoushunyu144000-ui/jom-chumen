@@ -6,7 +6,6 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getTicketByCode, listMyApplications } from "@/lib/server/events";
 import { useAppStore } from "@/lib/store";
 import type { TicketRecord } from "@/lib/types";
-import { PageLoading } from "@/components/page-loading";
 
 export const Route = createFileRoute("/me/applies")({ component: AppliesPage });
 
@@ -20,13 +19,11 @@ function AppliesPage() {
     let cancelled = false;
     async function load() {
       const codes = [...new Set([...applyCodes, ...ticketCodes])];
-      const fromStore: TicketRecord[] = [];
+      const fromStore = await Promise.all(
+        codes.map((code) => getTicketByCode({ data: { code } })),
+      );
       let mine: TicketRecord[] = [];
       if (user) {
-        const found = await Promise.all(
-          codes.map((code) => getTicketByCode({ data: { code } }).catch(() => null)),
-        );
-        fromStore.push(...found.filter((row): row is TicketRecord => Boolean(row)));
         try {
           mine = await listMyApplications();
         } catch {
@@ -56,7 +53,7 @@ function AppliesPage() {
         <p className="mt-1 text-sm text-muted">提交不等于成功，管理员同意后才会出票。</p>
       </header>
       {rows === null ? (
-        <PageLoading label="加载申请" compact />
+        <p className="mt-6 text-sm text-muted">加载中…</p>
       ) : rows.length === 0 ? (
         <p className="mt-8 text-sm text-muted">还没有申请。去发现页报一场。</p>
       ) : (

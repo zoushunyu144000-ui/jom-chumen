@@ -2,10 +2,8 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CityBar } from "@/components/city-bar";
 import { EventCard } from "@/components/event-card";
-import { FeedSkeleton } from "@/components/page-loading";
 import { CATEGORIES } from "@/lib/catalog";
 import { listEventCards } from "@/lib/server/event-cards";
-import { eventMatchesPlace } from "@/lib/places";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -13,8 +11,6 @@ export const Route = createFileRoute("/")({
   loader: async () => ({ events: await listEventCards() }),
   staleTime: 5 * 60_000,
   gcTime: 10 * 60_000,
-  pendingMs: 0,
-  pendingComponent: () => <FeedSkeleton label="加载中" />,
   component: Home,
 });
 
@@ -30,7 +26,12 @@ function Home() {
     const q = query.trim().toLowerCase();
     return events.filter((event) => {
       if (new Date(event.endsAt).getTime() < Date.now()) return false;
-      if (!eventMatchesPlace(event, place)) return false;
+      if (place.world && place.cityName) {
+        const hay = `${event.city} ${event.venue} ${event.address}`.toLowerCase();
+        if (!hay.includes(place.cityName.toLowerCase()) && event.city !== place.cityId) return false;
+      } else if (place.cityId !== "all" && event.city !== place.cityId) {
+        return false;
+      }
       if (category !== "all" && event.category !== category) return false;
       if (!q) return true;
       return `${event.title} ${event.subtitle} ${event.venue} ${event.hostName}`.toLowerCase().includes(q);
@@ -54,7 +55,7 @@ function Home() {
             onClick={() => setCategory(item.id)}
             className={cn(
               "h-9 shrink-0 rounded-full px-3.5 text-sm font-medium transition-colors duration-150",
-              category === item.id ? "bg-ink text-lime" : "glass-pill text-ink-soft",
+              category === item.id ? "bg-ink text-lime" : "bg-surface text-ink-soft shadow-card",
             )}
           >
             {item.name}
