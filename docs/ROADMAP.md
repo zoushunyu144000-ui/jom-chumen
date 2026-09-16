@@ -1,68 +1,77 @@
 # 任务目标与进度
 
-更新：2026-09-04（收尾与稳定性轮）。**状态以当前 `main` 真实代码为准，不按旧 Issue 文字倒推。**
+更新：2026-09-03。活任务以 [GitHub Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues) 为准。做完就关 issue，并改这一页。
 
-## 产品主流程
+## 总目标
 
-**发现活动 → 登录报名 → 自己 TNG / 现金付款 → WhatsApp 联系主办 → 主办人工确认 → 电子票 → 主办现场核销。**
+让东南亚华人能：**发现一局 → 提交申请 → 自己付款并加主办人 WhatsApp → 主办人确认 → 电子票进票夹。**
 
-本阶段明确不接支付网关，不做“付款后自动出票”。
+主办人能：**建俱乐部、发活动、改活动、审报名、导出名单。**
 
-## 已完成，不要重做
+## 线上
 
-- [x] 真二维码电子票 + `/verify/<token>`
-- [x] 报名号原子计数 + 唯一索引
-- [x] 报名 / 票隐私：只能读自己的
-- [x] 猜 chat ID 不会自动加入聊天
-- [x] 主人 / 主理人服务端权限
-- [x] 撤票、取消活动
-- [x] 活动图片多选、第一张封面、详情轮播
-- [x] 私信轮询刷新
-- [x] production 缺 `DATABASE_URL` 禁止 PGLite fallback
+- 站点：https://jom-chumen-2026.vercel.app
+- Vercel：jom-chumen-2026 / zuriel144000
+- 数据库：Neon（`DATABASE_URL` 已注入）
 
-## 本轮稳定性收尾
+## 已完成
 
-### P0
+- [x] 发现页、分类、城市条、活动详情、富文本+图
+- [x] 报名申请（pending）、报名号 `HD-YYYYMMDD-NNN`、重复手机号拦截
+- [x] 待确认页：金额、收款码、WhatsApp 码、`wa.me`、警告文案
+- [x] 查询报名、票夹（仅 approved / 旧 paid）
+- [x] 邮箱密码登录（线上可用；要正确环境变量）
+- [x] 谷歌登录改为站点自己的 OAuth（要 `GOOGLE_CLIENT_*`）
+- [x] 线上停用 Grok 中转 Google / X（会跳 auth.grok.me）
+- [x] 资料：名字、头像、标签
+- [x] 俱乐部公开页 + 日历 + 往期
+- [x] 发起 / 编辑活动、编辑俱乐部
+- [x] 主办审核：同意 / 拒绝 / 备注 / 下架 / CSV
+- [x] 站内消息
+- [x] 底部栏：发现 / 俱乐部 / 发布 / 消息 / 我的
+- [x] 全世界城市选择 + GPS（活动表仍只有五城枚举）
+- [x] 人工审核，无支付网关
+- [x] 部署到 Vercel + Neon；首页可打开
+- [x] 修 Vercel 500（`i18n-iso-countries` 语言包缺失）
 
-- [x] GitHub Actions CI：Node 22，`npm ci` → test → typecheck → auth invariant → build
-- [x] 新上传改走 S3-compatible 对象存储，Cloudflare R2 优先
-- [x] 生产未配置对象存储时拒绝上传，不回退 base64 入库
-- [x] 旧 Data URL 数据继续可读，本轮不批量搬历史数据
-- [x] 业务链路回归测试：报名 → 审核 → 票 → 验票 → 核销 → 再扫 → 撤票
-- [x] 回归测试覆盖报名隐私、私聊权限、猜 chat ID、20 个并发报名号
+## 进行中 / 下一步（按优先级）
 
-### P1
+### P0 上线前必须
 
-- [x] WhatsApp / OG 分享图统一 1200×630 JPEG，封面裁切 + 品牌兜底
-- [x] Production public URL 过滤 example / Grok sandbox / Vercel git preview
-- [x] PhotoStrip 显示“封面 / 第 2 张 / 第 3 张…”；保留稳定的左右箭头排序，不为拖拽大改页面
-- [x] AI 富文本粘贴：Markdown + ChatGPT/Claude/Gemini HTML + 纯文本 fallback
-- [x] 正文结构支持 H1/H2、粗体、无序/有序列表、引用、分隔线、链接、图片说明
-- [x] 不保存任意 HTML；script/style/iframe 等丢弃，链接只允许 http/https/mailto
-- [x] 旧正文 JSON 继续兼容
-- [x] 全仓代码搜索未发现仍在用户界面使用“拉取”文案，因此无需为此制造无意义改动
-- [x] 代码侧未发现 `jom-chumen-app` / 旧 `chumen` Vercel 项目绑定残留
+| Issue 主题 | 为什么 |
+| --- | --- |
+| 改对 Vercel 登录环境变量并 Redeploy | `BETTER_AUTH_URL` 不能是 example.com；缺 `BETTER_AUTH_SECRET` 邮箱登录不稳 |
+| 用邮箱测通 `/login` | 验证 session cookie 落在 vercel.app 域名上 |
+| （可选）自建 Google Cloud OAuth | Grok 中转不认 Vercel 回调 |
+| 图片改对象存储 | Data URL 进 Postgres 会把免费 0.5GB 很快用完 |
+| 报名号并发 | `count(*)+1` 会撞号 |
 
-## 需要人工配置后才真正可用
+### P1 产品完整
 
-- Cloudflare R2：创建 bucket / API token / 公共访问 URL，并把 `R2_*` 环境变量填进正式 Vercel 项目。
-- 正式站建议显式设置 `PUBLIC_SITE_URL=https://jom-chumen-2026.vercel.app`。
-- Vercel 后台：只保留 `jom-chumen-2026` 连 GitHub；旧 `jom-chumen-app`、`chumen` 若仍连接同一仓库，需要在 Vercel 后台断开 GitHub 集成。代码仓库不需要为此删除正式配置。
+| Issue 主题 | 为什么 |
+| --- | --- |
+| 俱乐部成员（加入/退出） | 现在俱乐部只有创建者，没有粉丝/成员 |
+| 活动 `city` 对齐全世界选择器 | 选择器能选纽约，发活动还只能五城 |
+| 主办人真实收款码 | 默认是占位 SVG |
+| 申请后的可靠通知 | 只有站内信，主办人可能看不到 |
+| 自建部署说明书（VPS，不是加州开发机） | Bot 云电脑不当生产 |
 
-## P2 / 本轮不做
+### P2 以后再说
 
-- 普通俱乐部粉丝加入 / 退出 / 公开成员列表
-- 全球城市数据结构重做
-- WhatsApp Business API
-- 邮件通知
+- 评价、拉黑、举报
+- 多主办人共管一个俱乐部
 - 地图找局
 - 英文 / 马来文
-- 支付网关
-- 微信登录
-- 自动退款
-- 评价系统
-- 举报系统
+- 退款流程（仍人工，先把状态补全）
+- 微信登录（没有开放平台就不要做）
+- 真支付网关（产品明确暂不做）
 
-## 原则
+## Agent 怎么领任务
 
-一次只修明确问题；关键权限必须服务端检查；新字段兼容旧数据；secret 不进 GitHub；不换技术栈、不大重构。
+1. 看 [Issues](https://github.com/zoushunyu144000-ui/jom-chumen/issues)?q=is%3Aopen
+2. 认领：评论 `claim`，加上 label `in-progress`
+3. 分支：`issue-N-short-name`
+4. 打开 PR，正文写 `Closes #N`
+5. 合入后更新本文件对应勾选
+
+一次一个 issue。不要顺手重构支付、不要引入第二个 UI 语言。

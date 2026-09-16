@@ -171,9 +171,6 @@ export default defineConfig(({ command, isPreview }) => ({
       ? [
           nitro({
             preset: "vercel",
-            // Keep serverless close to Neon (aws-ap-southeast-1) — US regions
-            // made every DB-backed page feel stuck on mobile.
-            vercel: { regions: ["sin1"] },
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.

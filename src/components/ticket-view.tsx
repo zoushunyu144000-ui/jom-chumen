@@ -1,34 +1,24 @@
-import { forwardRef } from "react";
 import { Calendar, MapPin } from "lucide-react";
-import { CoverFrame } from "@/components/cover-frame";
-import { TicketQr } from "@/components/ticket-qr";
+import { FakeQr } from "@/components/fake-qr";
 import { categoryName, cityName } from "@/lib/catalog";
-import { applyStatusLabel, formatPrice, formatRange, isApplySuccess, paymentLabel } from "@/lib/format";
+import { formatPrice, formatRange, paymentLabel } from "@/lib/format";
 import type { TicketRecord } from "@/lib/types";
 
-export const TicketView = forwardRef<HTMLElement, { ticket: TicketRecord }>(function TicketView(
-  { ticket },
-  ref,
-) {
+export function TicketView({ ticket }: { ticket: TicketRecord }) {
   const { event } = ticket;
-  const success = isApplySuccess(ticket.paymentStatus) && event.status !== "cancelled";
-  const badge = success
-    ? "报名成功"
-    : applyStatusLabel(ticket.paymentStatus === "cancelled" ? "cancelled" : ticket.paymentStatus);
   return (
-    <article ref={ref} data-ticket-card="1" className="overflow-hidden rounded-xl bg-surface shadow-card">
-      <CoverFrame
+    <article className="overflow-hidden rounded-xl bg-surface shadow-card">
+      <div className="h-1.5 bg-lime" />
+      <img
         src={event.coverUrl}
         alt={event.title}
-        minRatio={0.56}
-        maxRatio={1.15}
-        fallbackRatio={0.72}
+        className="aspect-2/1 w-full object-cover"
       />
       <div className="p-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted">Jom 出门局</p>
           <span className="rounded-full bg-lime px-2.5 py-0.5 text-xs font-semibold text-ink">
-            {badge}
+            报名成功
           </span>
         </div>
         <p className="mt-2 text-xs font-medium text-muted">
@@ -47,9 +37,6 @@ export const TicketView = forwardRef<HTMLElement, { ticket: TicketRecord }>(func
             {event.venue}
           </p>
         </div>
-        {!success && ticket.cancelReason ? (
-          <p className="mt-3 text-sm text-danger">{ticket.cancelReason}</p>
-        ) : null}
       </div>
       <div className="relative px-4">
         <div className="ticket-dash h-px" />
@@ -71,9 +58,9 @@ export const TicketView = forwardRef<HTMLElement, { ticket: TicketRecord }>(func
           </p>
         </div>
         <div className="size-28 overflow-hidden rounded-md bg-paper">
-          {ticket.verifyUrl ? <TicketQr value={ticket.verifyUrl} className="size-full" /> : null}
+          <FakeQr seed={ticket.code} className="size-full" />
         </div>
       </div>
     </article>
   );
-});
+}

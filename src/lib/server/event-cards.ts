@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "@/lib/db";
-import { ensureSeeded, mapEvent, type EventRow } from "@/lib/server/events";
+import { mapEvent, type EventRow } from "@/lib/server/events";
 import type { EventRecord } from "@/lib/types";
 
 const cardSelect = `
@@ -11,7 +11,6 @@ const cardSelect = `
     left(coalesce(e.description, ''), 80) as description,
     '[]' as highlights,
     e.host_name, '' as host_note, e.level, e.club_id, e.user_id, e.open,
-    coalesce(e.status,'published') as status,
     e.lat, e.lng, c.name as club_name,
     coalesce(r.paid_seats, 0) as paid_seats
   from events e
@@ -26,22 +25,19 @@ const cardSelect = `
 
 export const listEventCards = createServerFn({ method: "GET" }).handler(
   async (): Promise<EventRecord[]> => {
-    await ensureSeeded();
     const sql = await getSql();
     const rows = await sql.query<EventRow>(`${cardSelect} order by e.starts_at asc limit 60`);
-    return rows
-      .map((row) => {
-        const event = mapEvent(row);
-        return {
-          ...event,
-          coverUrl: `/api/media/${event.slug}?kind=cover`,
-          body: [],
-          wechatQr: "",
-          alipayQr: "",
-          tngQr: "",
-          whatsapp: "",
-        };
-      })
-      .filter((event) => event.status !== "cancelled");
+    return rows.map((row) => {
+      const event = mapEvent(row);
+      return {
+        ...event,
+        coverUrl: `/api/media/${event.slug}?kind=cover`,
+        body: [],
+        wechatQr: "",
+        alipayQr: "",
+        tngQr: "",
+        whatsapp: "",
+      };
+    });
   },
 );

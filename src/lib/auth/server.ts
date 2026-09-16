@@ -136,12 +136,9 @@ export const auth = betterAuth({
   session: { cookieCache: { enabled: false } },
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
   advanced: {
-    // Must match Secure cookies on https://*.vercel.app so OAuth state + session stick on mobile.
-    useSecureCookies: true,
+    useSecureCookies: false,
     defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
     cookies: {
-      // Google account picker can sit open for minutes on slow mobile; default 5m state expires too soon.
-      state: { attributes: { maxAge: 60 * 30 } },
       session_token: { name: SESSION_TOKEN_COOKIE },
       session_data: { name: "__Host-grok-auth.session_data" },
       account_data: { name: "__Host-grok-auth.account_data" },
