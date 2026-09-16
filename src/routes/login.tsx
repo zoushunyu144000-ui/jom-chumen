@@ -61,7 +61,8 @@ function Login() {
     try {
       const { data, error: authError } = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/me/profile",
+        callbackURL: "/me",
+        errorCallbackURL: "/login",
       });
       if (authError) throw new Error(authError.message || "谷歌登录失败");
       if (data?.url) window.location.href = data.url;

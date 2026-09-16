@@ -7,6 +7,7 @@ import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
+import { emitOAuthSessionCookie } from "./oauth-session-cookie.server";
 import { GROK_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
 import {
@@ -147,6 +148,7 @@ export const auth = betterAuth({
   },
   plugins: [
     gateIdentitySessions(),
+    emitOAuthSessionCookie(),
     ...(grokOAuthPlugin ? [grokOAuthPlugin] : []),
     bearer(),
     tanstackStartCookies(),
