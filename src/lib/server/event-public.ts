@@ -2,12 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { getSql } from "@/lib/db";
-import { loadEventMetaBySlug } from "@/lib/server/event-meta";
+import { loadEventMetaById, loadEventMetaBySlug } from "@/lib/server/event-meta";
 
 export const getPublicEvent = createServerFn({ method: "GET" })
   .validator((data: unknown) => z.object({ slug: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
-    const event = await loadEventMetaBySlug(data.slug);
+    // Prefer slug; fall back to id so older UUID-style links resolve when still in DB.
+    const event =
+      (await loadEventMetaBySlug(data.slug)) ?? (await loadEventMetaById(data.slug));
     if (!event) return null;
     let myApply: { status: string; code: string } | null = null;
     try {
