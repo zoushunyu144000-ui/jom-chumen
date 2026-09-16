@@ -25,6 +25,8 @@ export async function ensureAppSchema() {
   await sql.query(`alter table events add column if not exists refund_hours int default 24`);
   await sql.query(`alter table events add column if not exists refund_fee_percent int default 50`);
   await sql.query(`alter table events add column if not exists gallery_count int default 0`);
+  await sql.query(`alter table events add column if not exists lat double precision`);
+  await sql.query(`alter table events add column if not exists lng double precision`);
   await sql.query(`alter table events add column if not exists status text not null default 'published'`);
   await sql.query(`alter table events add column if not exists cancelled_at timestamptz`);
   await sql.query(`alter table events add column if not exists cancel_reason text not null default ''`);

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CoverFrame } from "@/components/cover-frame";
 import { categoryName, cityName } from "@/lib/catalog";
+import { isDemoEvent } from "@/lib/demo-events";
 import { formatPrice, formatWhen } from "@/lib/format";
 import type { EventRecord } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,14 @@ export function EventCard({
         fallbackRatio={featured ? 1.12 : 1.08}
       >
         <div className="absolute inset-0 bg-linear-to-t from-ink via-ink/35 to-ink/5" />
-        <Badge className="absolute left-3 top-3">{categoryName(event.category)}</Badge>
+        <div className="absolute left-3 top-3 flex items-center gap-1.5">
+          <Badge>{categoryName(event.category)}</Badge>
+          {isDemoEvent(event) ? (
+            <span className="rounded-full bg-ink/75 px-2.5 py-1 text-[12px] font-semibold text-surface backdrop-blur-md">
+              演示
+            </span>
+          ) : null}
+        </div>
         {tight ? (
           <span className="absolute right-3 top-3 rounded-full bg-ink/80 px-2.5 py-1 text-[12px] font-semibold text-lime backdrop-blur-md">
             仅剩 {event.remaining} 席

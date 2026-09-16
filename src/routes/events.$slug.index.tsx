@@ -9,6 +9,7 @@ import { EventShareButton } from "@/components/event-share";
 import { EventPageSkeleton } from "@/components/page-loading";
 import { EventMap } from "@/components/place-picker";
 import { categoryName, cityName } from "@/lib/catalog";
+import { isDemoEvent } from "@/lib/demo-events";
 import { formatPrice, formatRange } from "@/lib/format";
 import { eventOgImageUrl, eventShareUrl } from "@/lib/public-url";
 import { getPublicEvent } from "@/lib/server/event-public";
@@ -89,7 +90,14 @@ function EventDetail() {
         <div className="absolute right-3 top-3 z-10">
           <EventShareButton event={event} />
         </div>
-        <Badge className="absolute left-3 top-16 z-10">{categoryName(event.category)}</Badge>
+        <div className="absolute left-3 top-16 z-10 flex items-center gap-1.5">
+          <Badge>{categoryName(event.category)}</Badge>
+          {isDemoEvent(event) ? (
+            <span className="rounded-full bg-ink/75 px-2.5 py-1 text-[12px] font-semibold text-surface backdrop-blur-md">
+              演示
+            </span>
+          ) : null}
+        </div>
       </div>
       <section className="px-4 pt-4">
         <p className="text-xs font-medium text-muted">{cityName(event.city)}</p>

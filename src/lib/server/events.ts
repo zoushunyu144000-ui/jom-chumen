@@ -144,21 +144,27 @@ const eventSelect = `
 `;
 
 async function ensureSeeded() {
+  await ensureAppSchema();
   const sql = await getSql();
   for (const event of EVENT_SEED) {
     const exists = await sql<{ id: string }>`select id from events where id = ${event.id} limit 1`;
     if (exists[0]) continue;
+    const galleryCount =
+      event.galleryCount ??
+      (event.body ?? []).filter((block) => block.type === "img" && block.caption === "__gallery__").length;
     await sql`insert into events (
         id, slug, title, subtitle, category, city, venue, address,
         starts_at, ends_at, currency, price, capacity, sold, cover_url,
-        description, highlights, host_name, host_note, level
+        description, highlights, host_name, host_note, level,
+        body, lat, lng, gallery_count, status, open
       ) values (
         ${event.id}, ${event.slug}, ${event.title}, ${event.subtitle},
         ${event.category}, ${event.city}, ${event.venue}, ${event.address},
         ${event.startsAt}, ${event.endsAt}, ${event.currency}, ${event.price},
         ${event.capacity}, ${event.sold}, ${event.coverUrl}, ${event.description},
         ${JSON.stringify(event.highlights)}, ${event.hostName}, ${event.hostNote},
-        ${event.level}
+        ${event.level}, ${JSON.stringify(event.body ?? [])}, ${event.lat ?? null}, ${event.lng ?? null},
+        ${galleryCount}, ${"published"}, ${true}
       )`;
   }
   for (const club of CLUB_SEED) {
