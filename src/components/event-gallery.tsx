@@ -25,7 +25,7 @@ export function EventGallery({
       <div
         ref={scroller}
         onScroll={onScroll}
-        className="flex aspect-4/3 snap-x snap-mandatory overflow-x-auto bg-paper-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex aspect-[3/2] snap-x snap-mandatory overflow-x-auto bg-paper-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {pics.map((src, i) => (
           <img
