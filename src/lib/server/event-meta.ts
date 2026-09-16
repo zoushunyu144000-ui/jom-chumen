@@ -1,6 +1,6 @@
 import { getSql } from "@/lib/db";
 import { ensureAppSchema } from "@/lib/server/schema";
-import { ensureSeeded, mapEvent, type EventRow } from "@/lib/server/events";
+import { mapEvent, type EventRow } from "@/lib/server/events";
 import { countGallery, GALLERY_CAPTION, isGalleryImage, parseBodySafe } from "@/lib/server/event-media-parse";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -73,7 +73,6 @@ async function galleryCountFor(slug: string, stored: number) {
 
 export async function loadEventMetaBySlug(slug: string): Promise<PublicEvent | null> {
   await ensureAppSchema();
-  await ensureSeeded();
   const sql = await getSql();
   try {
     const rows = await sql.query<EventRow & { refund_hours?: number; refund_fee_percent?: number; gallery_count?: number }>(
