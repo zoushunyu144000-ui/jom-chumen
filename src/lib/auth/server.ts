@@ -44,6 +44,10 @@ const googleClientId = env("GOOGLE_CLIENT_ID") ?? env("VITE_GOOGLE_CLIENT_ID");
 const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
 const googleEnabled = Boolean(googleClientId && googleClientSecret);
 
+if (onVercel && !googleEnabled) {
+  console.error("[auth] Google OAuth incomplete: need GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET");
+}
+
 export const authConfigured =
   !authDisabled && Boolean((grokClientId && grokClientSecret) || googleEnabled || emailAndPasswordEnabled);
 
@@ -91,9 +95,9 @@ const database = databaseUrl
   ? new Pool({ connectionString: databaseUrl })
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
-// Host-only Secure cookie. Avoid __Host- names: browsers reject those if Domain is set,
-// and useSecureCookies would also prefix them. Better Auth adds __Secure- when needed.
-export const SESSION_TOKEN_COOKIE = "jom.session_token";
+// Keep Better Auth's default cookie base name so it matches the working
+// __Secure-better-auth.state cookie pattern on Vercel.
+export const SESSION_TOKEN_COOKIE = "better-auth.session_token";
 
 const grokOAuthPlugin =
   !authDisabled && grokClientId && grokClientSecret
@@ -140,10 +144,14 @@ export const auth = betterAuth({
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
   advanced: {
     useSecureCookies: true,
-    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/", httpOnly: true },
+    defaultCookieAttributes: {
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      httpOnly: true,
+    },
     cookies: {
       state: { attributes: { maxAge: 60 * 30 } },
-      session_token: { name: SESSION_TOKEN_COOKIE },
     },
   },
   plugins: [
@@ -160,8 +168,9 @@ export function readSessionToken(): string | null {
     return (
       getCookie(`__Secure-${SESSION_TOKEN_COOKIE}`) ??
       getCookie(SESSION_TOKEN_COOKIE) ??
+      getCookie("__Secure-jom.session_token") ??
+      getCookie("jom.session_token") ??
       getCookie("__Host-grok-auth.session_token") ??
-      getCookie("__Secure-__Host-grok-auth.session_token") ??
       null
     );
   } catch {

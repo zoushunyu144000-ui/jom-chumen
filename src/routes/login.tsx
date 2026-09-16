@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,18 @@ function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("in");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fromAuth =
+      params.get("error") ||
+      params.get("error_description") ||
+      params.get("error_code");
+    if (fromAuth) {
+      setError(decodeURIComponent(fromAuth).replace(/\+/g, " "));
+    }
+  }, []);
 
   async function onEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +59,7 @@ function Login() {
         const result = await authClient.signIn.email({ email, password });
         if (result.error) throw new Error(result.error.message || "登录失败");
       }
-      await navigate({ to: "/me" });
+      window.location.href = "/me";
     } catch (err) {
       setError(err instanceof Error ? err.message : "请稍后再试");
     } finally {
