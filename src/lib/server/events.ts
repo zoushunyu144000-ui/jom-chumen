@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EVENT_SEED, CLUB_SEED } from "@/lib/catalog";
+import { SEED_COORDS } from "@/lib/server/seed-coords";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { makeCode, makeId, maskPhone } from "@/lib/utils";
@@ -161,6 +162,9 @@ async function ensureSeeded() {
     for (const slug of club.eventSlugs) {
       await sql`update events set club_id = ${club.id}, host_name = ${club.name} where slug = ${slug} and (club_id is null or club_id = ${club.id})`;
     }
+  }
+  for (const [slug, coord] of Object.entries(SEED_COORDS)) {
+    await sql`update events set lat = ${coord.lat}, lng = ${coord.lng} where slug = ${slug} and lat is null`;
   }
   await sql`update events set
       whatsapp = case when whatsapp is null or whatsapp = '' then '601135550088' else whatsapp end,

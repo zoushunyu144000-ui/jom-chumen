@@ -1,0 +1,16 @@
+export const SEED_COORDS: Record<string, { lat: number; lng: number }> = {
+  "frisbee-penang-aug": { lat: 5.4733, lng: 100.2445 },
+  "frisbee-penang-sunset": { lat: 5.4733, lng: 100.2445 },
+  "reading-aug": { lat: 5.3561, lng: 100.2941 },
+  "photo-georgetown": { lat: 5.4146, lng: 100.3372 },
+  "hike-penang-hill": { lat: 5.4295, lng: 100.2989 },
+  "reading-cwg": { lat: 5.3558, lng: 100.2966 },
+  "yoga-beach-sunrise": { lat: 5.4733, lng: 100.2445 },
+  "talk-nanyang-home": { lat: 5.4192, lng: 100.3378 },
+  "sup-penang-dusk": { lat: 5.4586, lng: 100.3214 },
+  "citywalk-kl-petaling": { lat: 3.1439, lng: 101.6978 },
+  "camp-genting-foothill": { lat: 3.273, lng: 101.727 },
+  "badminton-jb-weekend": { lat: 1.5322, lng: 103.7881 },
+  "frisbee-sg-eastcoast": { lat: 1.3014, lng: 103.9122 },
+  "citywalk-bkk-night": { lat: 13.7589, lng: 100.4973 },
+};

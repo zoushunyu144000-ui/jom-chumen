@@ -7,6 +7,7 @@ import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
+import { emitOAuthSessionCookie } from "./oauth-session-cookie.server";
 import { GROK_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
 import {
@@ -90,7 +91,9 @@ const database = databaseUrl
   ? new Pool({ connectionString: databaseUrl })
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
-export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";
+// Host-only Secure cookie. Avoid __Host- names: browsers reject those if Domain is set,
+// and useSecureCookies would also prefix them. Better Auth adds __Secure- when needed.
+export const SESSION_TOKEN_COOKIE = "jom.session_token";
 
 const grokOAuthPlugin =
   !authDisabled && grokClientId && grokClientSecret
@@ -136,20 +139,16 @@ export const auth = betterAuth({
   session: { cookieCache: { enabled: false } },
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
   advanced: {
-    // Must match Secure cookies on https://*.vercel.app so OAuth state + session stick on mobile.
     useSecureCookies: true,
-    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/" },
+    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/", httpOnly: true },
     cookies: {
-      // Google account picker can sit open for minutes on slow mobile; default 5m state expires too soon.
       state: { attributes: { maxAge: 60 * 30 } },
       session_token: { name: SESSION_TOKEN_COOKIE },
-      session_data: { name: "__Host-grok-auth.session_data" },
-      account_data: { name: "__Host-grok-auth.account_data" },
-      dont_remember: { name: "__Host-grok-auth.dont_remember" },
     },
   },
   plugins: [
     gateIdentitySessions(),
+    emitOAuthSessionCookie(),
     ...(grokOAuthPlugin ? [grokOAuthPlugin] : []),
     bearer(),
     tanstackStartCookies(),
@@ -158,7 +157,13 @@ export const auth = betterAuth({
 
 export function readSessionToken(): string | null {
   try {
-    return getCookie(SESSION_TOKEN_COOKIE) ?? null;
+    return (
+      getCookie(`__Secure-${SESSION_TOKEN_COOKIE}`) ??
+      getCookie(SESSION_TOKEN_COOKIE) ??
+      getCookie("__Host-grok-auth.session_token") ??
+      getCookie("__Secure-__Host-grok-auth.session_token") ??
+      null
+    );
   } catch {
     return null;
   }
