@@ -51,11 +51,22 @@ if (onVercel && !googleEnabled) {
 export const authConfigured =
   !authDisabled && Boolean((grokClientId && grokClientSecret) || googleEnabled || emailAndPasswordEnabled);
 
+/** Canonical production origin — never derive this from VERCEL_URL. */
+const PRODUCTION_SITE_URL = "https://jom-chumen-2026.vercel.app";
+
 function publicDeployUrl(): string | undefined {
   const raw = env("BETTER_AUTH_URL");
   if (raw && !/example\.com/i.test(raw)) return raw.replace(/\/+$/, "");
+
+  const isProduction = env("VERCEL_ENV") === "production";
   const prod = env("VERCEL_PROJECT_PRODUCTION_URL");
-  if (prod) return prod.startsWith("http") ? prod.replace(/\/+$/, "") : `https://${prod}`;
+  if (prod) {
+    return prod.startsWith("http") ? prod.replace(/\/+$/, "") : `https://${prod}`;
+  }
+  // Production must not fall back to VERCEL_URL (deployment/alias host),
+  // or Google redirect_uri drifts off the registered production callback.
+  if (isProduction) return PRODUCTION_SITE_URL;
+
   const vu = env("VERCEL_URL");
   if (vu) return `https://${vu.replace(/^https?:\/\//, "")}`;
   return undefined;
@@ -71,7 +82,7 @@ const LOCAL_DEV_ORIGINS: string[] = [
 const VERCEL_TRUST: string[] = [
   "https://*.vercel.app",
   "*.vercel.app",
-  "https://jom-chumen-2026.vercel.app",
+  PRODUCTION_SITE_URL,
   "https://jom-chumen-2026-zuriel144000.vercel.app",
 ];
 const baseURL = explicitBaseURL ?? {
@@ -81,7 +92,8 @@ const baseURL = explicitBaseURL ?? {
 };
 
 const trustedOrigins: string[] = [
-  ...(explicitBaseURL ? [explicitBaseURL] : []),
+  PRODUCTION_SITE_URL,
+  ...(explicitBaseURL && explicitBaseURL !== PRODUCTION_SITE_URL ? [explicitBaseURL] : []),
   ...VERCEL_TRUST,
   ...previewAllowedHosts,
   ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
@@ -179,3 +191,4 @@ export function readSessionToken(): string | null {
 }
 
 export { GROK_PROVIDERS } from "./providers";
+
