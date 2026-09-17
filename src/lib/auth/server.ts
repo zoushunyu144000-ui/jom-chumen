@@ -1,1 +1,1 @@
-x
+@/tmp/out_content.ts
