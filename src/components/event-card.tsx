@@ -41,7 +41,7 @@ export function EventCard({
         featured ? "rise-in rounded-xl" : "rounded-lg",
       )}
     >
-      {/* Poster: category + title + subtitle only */}
+      {/* Poster ~78%: category, title, 1-line subtitle, price pill */}
       <div className="relative overflow-hidden">
         <Cover
           src={event.coverUrl}
@@ -51,46 +51,50 @@ export function EventCard({
             featured ? "aspect-[3/2]" : "aspect-[16/10]",
           )}
         />
-        <div className="absolute inset-0 bg-linear-to-t from-ink/80 via-ink/25 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-4 text-surface">
-          <Badge className="mb-2">{categoryName(event.category)}</Badge>
+        <div className="absolute inset-0 bg-linear-to-t from-ink/75 via-ink/20 to-transparent" />
+
+        <div className="absolute inset-x-0 bottom-0 p-3 pr-16 text-surface">
+          <Badge className="mb-1.5">{categoryName(event.category)}</Badge>
           <h2
             className={cn(
-              "font-display font-bold leading-tight tracking-tight",
-              featured ? "text-2xl" : "text-[17px]",
+              "font-display font-semibold leading-snug tracking-tight",
+              featured ? "text-lg" : "text-[15px]",
             )}
           >
             {event.title}
           </h2>
           {event.subtitle ? (
-            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-surface/80">
+            <p className="mt-0.5 truncate text-xs leading-snug text-surface/80">
               {event.subtitle}
             </p>
           ) : null}
         </div>
+
+        <span className="absolute bottom-3 right-3 rounded-full bg-lime px-2.5 py-1 text-xs font-semibold tabular-nums text-ink shadow-sm">
+          {price}
+        </span>
       </div>
 
-      {/* Meta below poster: datetime, place, price, remaining */}
-      <div className={cn("space-y-1.5", featured ? "px-4 py-3.5" : "px-0.5 py-2.5")}>
-        <p className="flex items-center gap-1.5 text-sm text-muted">
-          <Calendar className="size-3.5 shrink-0 opacity-70" aria-hidden />
-          <span className="min-w-0 truncate">{when}</span>
-        </p>
-        <p className="flex items-center gap-1.5 text-sm text-muted">
-          <MapPin className="size-3.5 shrink-0 opacity-70" aria-hidden />
-          <span className="min-w-0 truncate">{place}</span>
-        </p>
-        <div className="flex items-center justify-between gap-3 pt-0.5">
-          <span
-            className={cn(
-              "text-[15px] font-semibold tabular-nums",
-              event.price <= 0 ? "text-ink-soft" : "text-ink",
-            )}
-          >
-            {price}
-          </span>
-          <span className="text-xs text-muted tabular-nums">还剩 {event.remaining} 人</span>
+      {/* Thin meta strip ~22%: when + place | remaining */}
+      <div
+        className={cn(
+          "flex items-center justify-between gap-3",
+          featured ? "px-3 py-2" : "px-1 py-1.5",
+        )}
+      >
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="flex items-center gap-1 text-[11px] leading-none text-muted">
+            <Calendar className="size-3 shrink-0 opacity-70" aria-hidden />
+            <span className="truncate">{when}</span>
+          </p>
+          <p className="flex items-center gap-1 text-[11px] leading-none text-muted">
+            <MapPin className="size-3 shrink-0 opacity-70" aria-hidden />
+            <span className="truncate">{place}</span>
+          </p>
         </div>
+        <span className="shrink-0 text-[11px] tabular-nums text-muted">
+          还剩 {event.remaining} 人
+        </span>
       </div>
     </Link>
   );
