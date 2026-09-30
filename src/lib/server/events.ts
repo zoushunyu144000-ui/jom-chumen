@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EVENT_SEED, CLUB_SEED } from "@/lib/catalog";
 import { SEED_COORDS } from "@/lib/server/seed-coords";
+import { repairDemoEventMedia } from "@/lib/server/event-media-repair";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { makeCode, makeId, maskPhone } from "@/lib/utils";
@@ -154,6 +155,7 @@ async function ensureSeeded() {
         ${event.level}
       )`;
   }
+  await repairDemoEventMedia((text, params) => sql.query(text, params));
   for (const club of CLUB_SEED) {
     const exists = await sql<{ id: string }>`select id from clubs where id = ${club.id} limit 1`;
     if (!exists[0]) {
