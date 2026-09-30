@@ -26,9 +26,27 @@ const fixPlaceholders = demoEventMediaRepairs.map((_, index) => {
   return `($${first}::text, $${first + 1}::text, $${first + 2}::text, $${first + 3}::text)`;
 });
 
-export async function repairDemoEventMedia(query: QueryEventRows) {
-  const values = demoEventMediaRepairs.flatMap((repair) => [...repair]);
+export async function repairDemoEventCover(query: QueryEventRows, slug: string) {
+  const repair = demoEventMediaRepairs.find(([targetSlug]) => targetSlug === slug);
+  if (!repair) return [];
+
   return query(
+    `update events
+     set cover_url = $2
+     where slug = $1 and cover_url is distinct from $2
+     returning slug`,
+    [repair[0], repair[1]],
+  );
+}
+
+export async function repairDemoEventMedia(query: QueryEventRows) {
+  const coverUpdates: Array<{ slug: string }> = [];
+  for (const [slug] of demoEventMediaRepairs) {
+    coverUpdates.push(...(await repairDemoEventCover(query, slug)));
+  }
+
+  const values = demoEventMediaRepairs.flatMap((repair) => [...repair]);
+  const mediaUpdates = await query(
     `
       with fixes (slug, cover_url, gallery_one, gallery_two) as (
         values ${fixPlaceholders.join(",\n               ")}
@@ -104,4 +122,5 @@ export async function repairDemoEventMedia(query: QueryEventRows) {
     `,
     values,
   );
+  return [...new Map([...coverUpdates, ...mediaUpdates].map((row) => [row.slug, row])).values()];
 }

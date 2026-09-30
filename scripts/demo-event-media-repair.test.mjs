@@ -15,6 +15,11 @@ test("repairs only the three demo covers and galleries, and is repeatable", asyn
     "function",
     "a targeted event media repair should be available",
   );
+  assert.equal(
+    typeof repairModule?.repairDemoEventCover,
+    "function",
+    "cover reads should be able to repair their exact database row",
+  );
 
   const db = new PGlite();
   try {
@@ -33,6 +38,16 @@ test("repairs only the three demo covers and galleries, and is repeatable", asyn
     `);
 
     const query = (sql, params) => db.query(sql, params).then((result) => result.rows);
+    const coverUpdates = await repairModule.repairDemoEventCover(query, "demo-penang-ai-coffee");
+    assert.deepEqual(
+      coverUpdates.map((row) => row.slug),
+      ["demo-penang-ai-coffee"],
+    );
+    assert.deepEqual(
+      await repairModule.repairDemoEventCover(query, "other-event"),
+      [],
+      "non-target event covers must remain untouched",
+    );
     const updated = await repairModule.repairDemoEventMedia(query);
     assert.deepEqual(updated.map((row) => row.slug).sort(), [
       "demo-kl-ai-meetup",
